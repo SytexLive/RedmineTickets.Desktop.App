@@ -53,7 +53,7 @@ describe("App", () => {
     });
   });
 
-  it("assigns a ticket from the localized context menu", async () => {
+  it("adds a comment and assigns the ticket from the comment dialog", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {
         return Promise.resolve();
@@ -110,9 +110,28 @@ describe("App", () => {
 
     const ticket = await screen.findByText("Login reparieren");
     fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
-    fireEvent.click(await screen.findByRole("button", { name: "Max Mustermann" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+    fireEvent.change(screen.getByPlaceholderText("Kommentar"), {
+      target: { value: "Bitte übernehmen." }
+    });
+    fireEvent.change(screen.getByLabelText("Zuweisen an"), {
+      target: { value: "7" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Änderungen speichern" }));
 
     await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("add_ticket_comment", {
+        settings: {
+          baseUrl: "https://redmine.example.com",
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60,
+          language: "de"
+        },
+        ticketId: 42,
+        comment: "Bitte übernehmen."
+      });
       expect(invokeMock).toHaveBeenCalledWith("assign_ticket", {
         settings: {
           baseUrl: "https://redmine.example.com",

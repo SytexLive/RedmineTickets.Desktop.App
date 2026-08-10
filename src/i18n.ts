@@ -13,6 +13,7 @@ export type TranslationKey =
   | "loading"
   | "monitor"
   | "noOpenTickets"
+  | "noAssignment"
   | "noStatusesLoaded"
   | "noUsersLoaded"
   | "openCount"
@@ -22,6 +23,7 @@ export type TranslationKey =
   | "refreshTickets"
   | "save"
   | "saveComment"
+  | "saveChanges"
   | "saving"
   | "settings"
   | "showSettings"
@@ -45,6 +47,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     loading: "L\u00e4dt",
     monitor: "Monitor",
     noOpenTickets: "Keine offenen Tickets",
+    noAssignment: "Nicht ändern",
     noStatusesLoaded: "Keine Status geladen",
     noUsersLoaded: "Keine Benutzer geladen",
     openCount: "offen",
@@ -54,6 +57,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     refreshTickets: "Tickets aktualisieren",
     save: "Speichern",
     saveComment: "Kommentar speichern",
+    saveChanges: "\u00c4nderungen speichern",
     saving: "Speichert",
     settings: "Einstellungen",
     showSettings: "Einstellungen anzeigen",
@@ -76,6 +80,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     loading: "Loading",
     monitor: "Monitor",
     noOpenTickets: "No open tickets",
+    noAssignment: "Do not change",
     noStatusesLoaded: "No statuses loaded",
     noUsersLoaded: "No users loaded",
     openCount: "open",
@@ -85,6 +90,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     refreshTickets: "Refresh tickets",
     save: "Save",
     saveComment: "Save comment",
+    saveChanges: "Save changes",
     saving: "Saving",
     settings: "Settings",
     showSettings: "Show settings",

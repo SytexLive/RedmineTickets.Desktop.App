@@ -51,6 +51,7 @@ export function App() {
     useState<TicketContextMenu | null>(null);
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
 
   const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -172,29 +173,20 @@ export function App() {
     }
   }
 
-  async function handleAssignTicket(ticket: Ticket, user: RedmineUser) {
-    if (!settings) {
-      setViewState("settings");
-      return;
-    }
-
-    setTicketContextMenu(null);
-    try {
-      await assignTicket(settings, ticket.id, user.id);
-      await refreshTickets(settings);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
   async function handleSubmitComment() {
     if (!settings || !commentTicket) {
       return;
     }
 
     try {
-      await addTicketComment(settings, commentTicket.id, comment);
+      if (comment.trim().length > 0) {
+        await addTicketComment(settings, commentTicket.id, comment);
+      }
+      if (selectedAssigneeId) {
+        await assignTicket(settings, commentTicket.id, Number(selectedAssigneeId));
+      }
       setComment("");
+      setSelectedAssigneeId("");
       setCommentTicket(null);
       await refreshTickets(settings);
     } catch (err) {
@@ -338,29 +330,12 @@ export function App() {
                   <span className="context-menu-empty">{t("noStatusesLoaded")}</span>
                 )}
               </div>
-              <div className="context-menu-section">
-                <span>{t("assignTo")}</span>
-                {assignableUsers.length > 0 ? (
-                  assignableUsers.map((user) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => {
-                        void handleAssignTicket(ticketContextMenu.ticket, user);
-                      }}
-                    >
-                      {user.firstname} {user.lastname}
-                    </button>
-                  ))
-                ) : (
-                  <span className="context-menu-empty">{t("noUsersLoaded")}</span>
-                )}
-              </div>
               <button
                 type="button"
                 onClick={() => {
                   setCommentTicket(ticketContextMenu.ticket);
                   setComment("");
+                  setSelectedAssigneeId("");
                   setTicketContextMenu(null);
                 }}
               >
@@ -387,15 +362,33 @@ export function App() {
                 placeholder={t("comment")}
                 value={comment}
               />
+              <label className="comment-dialog-field">
+                <span>{t("assignTo")}</span>
+                <select
+                  aria-label={t("assignTo")}
+                  onChange={(event) => setSelectedAssigneeId(event.target.value)}
+                  value={selectedAssigneeId}
+                >
+                  <option value="">{t("noAssignment")}</option>
+                  {assignableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.firstname} {user.lastname}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {assignableUsers.length === 0 ? (
+                <span className="comment-dialog-empty">{t("noUsersLoaded")}</span>
+              ) : null}
               <button
                 className="primary-action"
-                disabled={comment.trim().length === 0}
+                disabled={comment.trim().length === 0 && !selectedAssigneeId}
                 type="button"
                 onClick={() => {
                   void handleSubmitComment();
                 }}
               >
-                {t("saveComment")}
+                {t("saveChanges")}
               </button>
             </div>
           ) : null}

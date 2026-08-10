@@ -30,7 +30,9 @@ pub struct MonitorInfo {
     pub is_primary: bool,
 }
 
-fn primary_monitor_position(app: &AppHandle) -> Result<Option<tauri::PhysicalPosition<i32>>, String> {
+fn primary_monitor_position(
+    app: &AppHandle,
+) -> Result<Option<tauri::PhysicalPosition<i32>>, String> {
     Ok(app
         .primary_monitor()
         .map_err(|_| "Could not read primary monitor".to_string())?
@@ -74,8 +76,7 @@ fn order_monitors(
 pub fn list_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, String> {
     let primary_position = primary_monitor_position(&app)?;
     let monitors = order_monitors(
-        app
-        .available_monitors()
+        app.available_monitors()
             .map_err(|_| "Could not read monitors".to_string())?,
         primary_position,
     );
@@ -107,7 +108,7 @@ fn selected_monitor(window: &WebviewWindow, settings: PanelSettings) -> Result<M
     let primary_position = primary_monitor_position_for_window(window)?;
     let monitors = order_monitors(
         window
-        .available_monitors()
+            .available_monitors()
             .map_err(|_| "Could not read monitors".to_string())?,
         primary_position,
     );
@@ -168,7 +169,10 @@ pub fn expand_window(window: WebviewWindow, settings: Option<PanelSettings>) -> 
 }
 
 #[tauri::command]
-pub fn collapse_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
+pub fn collapse_window(
+    window: WebviewWindow,
+    settings: Option<PanelSettings>,
+) -> Result<(), String> {
     let settings = settings.unwrap_or_default();
     let monitor = selected_monitor(&window, settings)?;
     let work_area = monitor.work_area();
@@ -236,24 +240,21 @@ mod tests {
 
     #[test]
     fn docks_inside_primary_monitor_with_global_origin() {
-        let position =
-            docked_window_position(1920.0, 0.0, 2560.0, 1440.0, 360.0, DockSide::Right);
+        let position = docked_window_position(1920.0, 0.0, 2560.0, 1440.0, 360.0, DockSide::Right);
 
         assert_eq!(position, (4120.0, 0.0, 360.0, 1440.0));
     }
 
     #[test]
     fn docks_to_left_side_of_selected_monitor() {
-        let position =
-            docked_window_position(-1920.0, 0.0, 1920.0, 1080.0, 360.0, DockSide::Left);
+        let position = docked_window_position(-1920.0, 0.0, 1920.0, 1080.0, 360.0, DockSide::Left);
 
         assert_eq!(position, (-1920.0, 0.0, 360.0, 1080.0));
     }
 
     #[test]
     fn uses_work_area_height_to_avoid_taskbar() {
-        let position =
-            docked_window_position(0.0, 0.0, 1920.0, 1040.0, 360.0, DockSide::Right);
+        let position = docked_window_position(0.0, 0.0, 1920.0, 1040.0, 360.0, DockSide::Right);
 
         assert_eq!(position, (1560.0, 0.0, 360.0, 1040.0));
     }

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   addTicketComment,
+  assignTicket,
   collapseWindow,
   dockWindow,
   expandWindow,
+  fetchAssignableUsers,
   fetchIssueStatuses,
   fetchTickets,
   listMonitors,
@@ -11,6 +13,7 @@ import {
   loadSettings,
   type MonitorInfo,
   openTicketUrl,
+  type RedmineUser,
   saveSettings,
   type RedmineSettings,
   updateTicketStatus
@@ -24,6 +27,7 @@ import {
   SettingsIcon
 } from "./components/icons";
 import type { Ticket } from "./domain/ticket";
+import { createTranslator, formatError, type Language } from "./i18n";
 
 type ViewState = "loading" | "settings" | "tickets";
 
@@ -42,6 +46,7 @@ export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [issueStatuses, setIssueStatuses] = useState<IssueStatus[]>([]);
+  const [assignableUsers, setAssignableUsers] = useState<RedmineUser[]>([]);
   const [ticketContextMenu, setTicketContextMenu] =
     useState<TicketContextMenu | null>(null);
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
@@ -68,6 +73,15 @@ export function App() {
     }
   }, []);
 
+  const refreshAssignableUsers = useCallback(async (nextSettings: RedmineSettings) => {
+    try {
+      const loadedUsers = await fetchAssignableUsers(nextSettings);
+      setAssignableUsers(loadedUsers);
+    } catch {
+      setAssignableUsers([]);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -88,6 +102,7 @@ export function App() {
         }
         void dockWindow(loadedSettings);
         void refreshIssueStatuses(loadedSettings);
+        void refreshAssignableUsers(loadedSettings);
         void refreshTickets(loadedSettings);
       })
       .catch((err) => {
@@ -102,7 +117,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refreshIssueStatuses, refreshTickets]);
+  }, [refreshAssignableUsers, refreshIssueStatuses, refreshTickets]);
 
   useEffect(() => {
     if (!settings) {
@@ -125,6 +140,7 @@ export function App() {
       setSettings(nextSettings);
       await dockWindow(nextSettings);
       await refreshIssueStatuses(nextSettings);
+      await refreshAssignableUsers(nextSettings);
       await refreshTickets(nextSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -150,6 +166,21 @@ export function App() {
     setTicketContextMenu(null);
     try {
       await updateTicketStatus(settings, ticket.id, status.id);
+      await refreshTickets(settings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleAssignTicket(ticket: Ticket, user: RedmineUser) {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    setTicketContextMenu(null);
+    try {
+      await assignTicket(settings, ticket.id, user.id);
       await refreshTickets(settings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -182,7 +213,10 @@ export function App() {
   }
 
   const showingSettings = viewState === "settings";
+  const language: Language = settings?.language ?? "de";
+  const t = createTranslator(language);
   const dockSide = settings?.dockSide ?? "right";
+  const visibleError = error ? formatError(error, language) : null;
 
   return (
     <main
@@ -190,9 +224,9 @@ export function App() {
     >
       {collapsed ? (
         <button
-          aria-label="Expand panel"
+          aria-label={t("expandPanel")}
           className="edge-handle"
-          title="Expand panel"
+          title={t("expandPanel")}
           type="button"
           onClick={handleExpand}
         >
@@ -202,13 +236,13 @@ export function App() {
         <>
           <header className="panel-header">
             <div>
-              <h1>Redmine Tickets</h1>
-              <p>{showingSettings ? "Settings" : `${tickets.length} open`}</p>
+              <h1>{t("title")}</h1>
+              <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
             </div>
             <div className="header-actions">
               <button
-                aria-label="Refresh tickets"
-                title="Refresh tickets"
+                aria-label={t("refreshTickets")}
+                title={t("refreshTickets")}
                 type="button"
                 onClick={() => {
                   if (!settings) {
@@ -222,28 +256,28 @@ export function App() {
                 <RefreshIcon />
               </button>
               <button
-                aria-label="Show settings"
-                title="Show settings"
+                aria-label={t("showSettings")}
+                title={t("showSettings")}
                 type="button"
                 onClick={() => setViewState("settings")}
               >
                 <SettingsIcon />
               </button>
               <button
-                aria-label="Collapse panel"
-                title="Collapse panel"
+                aria-label={t("collapsePanel")}
+                title={t("collapsePanel")}
                 type="button"
                 onClick={handleCollapse}
               >
-                <ChevronRightIcon />
+                {dockSide === "right" ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               </button>
             </div>
           </header>
 
-          {error ? <div className="error-banner">{error}</div> : null}
+          {visibleError ? <div className="error-banner">{visibleError}</div> : null}
 
           {viewState === "loading" ? (
-            <div className="status-panel">Loading</div>
+            <div className="status-panel">{t("loading")}</div>
           ) : null}
 
           {showingSettings ? (
@@ -256,7 +290,7 @@ export function App() {
           ) : null}
 
           {viewState === "tickets" && tickets.length === 0 ? (
-            <div className="status-panel">No open tickets</div>
+            <div className="status-panel">{t("noOpenTickets")}</div>
           ) : null}
 
           {viewState === "tickets" && tickets.length > 0 ? (
@@ -284,10 +318,10 @@ export function App() {
                   setTicketContextMenu(null);
                 }}
               >
-                Open in browser
+                {t("openInBrowser")}
               </button>
               <div className="context-menu-section">
-                <span>Status</span>
+                <span>{t("status")}</span>
                 {issueStatuses.length > 0 ? (
                   issueStatuses.map((status) => (
                     <button
@@ -301,7 +335,25 @@ export function App() {
                     </button>
                   ))
                 ) : (
-                  <span className="context-menu-empty">No statuses loaded</span>
+                  <span className="context-menu-empty">{t("noStatusesLoaded")}</span>
+                )}
+              </div>
+              <div className="context-menu-section">
+                <span>{t("assignTo")}</span>
+                {assignableUsers.length > 0 ? (
+                  assignableUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => {
+                        void handleAssignTicket(ticketContextMenu.ticket, user);
+                      }}
+                    >
+                      {user.firstname} {user.lastname}
+                    </button>
+                  ))
+                ) : (
+                  <span className="context-menu-empty">{t("noUsersLoaded")}</span>
                 )}
               </div>
               <button
@@ -312,17 +364,17 @@ export function App() {
                   setTicketContextMenu(null);
                 }}
               >
-                Add comment
+                {t("addComment")}
               </button>
             </div>
           ) : null}
 
           {commentTicket ? (
-            <div className="comment-dialog" role="dialog" aria-label="Add comment">
+            <div className="comment-dialog" role="dialog" aria-label={t("addComment")}>
               <div className="comment-dialog-header">
                 <strong>#{commentTicket.id}</strong>
                 <button
-                  aria-label="Close comment dialog"
+                  aria-label={t("closeCommentDialog")}
                   type="button"
                   onClick={() => setCommentTicket(null)}
                 >
@@ -332,7 +384,7 @@ export function App() {
               <textarea
                 autoFocus
                 onChange={(event) => setComment(event.target.value)}
-                placeholder="Comment"
+                placeholder={t("comment")}
                 value={comment}
               />
               <button
@@ -343,7 +395,7 @@ export function App() {
                   void handleSubmitComment();
                 }}
               >
-                Save comment
+                {t("saveComment")}
               </button>
             </div>
           ) : null}

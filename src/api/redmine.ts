@@ -7,6 +7,7 @@ export type RedmineSettings = {
   monitorIndex: number;
   dockSide: "left" | "right";
   refreshIntervalSeconds: number;
+  language: "de" | "en";
 };
 
 export type MonitorInfo = {
@@ -18,6 +19,13 @@ export type MonitorInfo = {
 export type IssueStatus = {
   id: number;
   name: string;
+};
+
+export type RedmineUser = {
+  id: number;
+  firstname: string;
+  lastname: string;
+  login: string;
 };
 
 type PanelSettings = Pick<RedmineSettings, "monitorIndex" | "dockSide">;
@@ -49,6 +57,10 @@ export function fetchIssueStatuses(settings: RedmineSettings): Promise<IssueStat
   return invoke("fetch_issue_statuses", { settings });
 }
 
+export function fetchAssignableUsers(settings: RedmineSettings): Promise<RedmineUser[]> {
+  return invoke("fetch_assignable_users", { settings });
+}
+
 export function updateTicketStatus(
   settings: RedmineSettings,
   ticketId: number,
@@ -63,6 +75,14 @@ export function addTicketComment(
   comment: string
 ): Promise<void> {
   return invoke("add_ticket_comment", { settings, ticketId, comment });
+}
+
+export function assignTicket(
+  settings: RedmineSettings,
+  ticketId: number,
+  userId: number
+): Promise<void> {
+  return invoke("assign_ticket", { settings, ticketId, userId });
 }
 
 export function listMonitors(): Promise<MonitorInfo[]> {

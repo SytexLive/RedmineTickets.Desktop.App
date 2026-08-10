@@ -16,8 +16,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let show_hide = MenuItem::with_id(app, "show_hide", "Show/Hide", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let show_hide =
+                MenuItem::with_id(app, "show_hide", "Anzeigen/Ausblenden", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Beenden", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_hide, &quit])?;
 
             TrayIconBuilder::new()
@@ -66,6 +67,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ping,
             redmine::add_ticket_comment,
+            redmine::assign_ticket,
+            redmine::fetch_assignable_users,
             redmine::fetch_tickets,
             redmine::fetch_issue_statuses,
             redmine::update_ticket_status,

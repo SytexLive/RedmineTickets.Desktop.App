@@ -10,6 +10,19 @@ pub fn default_refresh_interval_seconds() -> u64 {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum Language {
+    De,
+    En,
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        Self::De
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum DockSide {
     Left,
     Right,
@@ -50,6 +63,8 @@ pub struct RedmineSettings {
     pub dock_side: DockSide,
     #[serde(default = "default_refresh_interval_seconds")]
     pub refresh_interval_seconds: u64,
+    #[serde(default)]
+    pub language: Language,
 }
 
 impl RedmineSettings {
@@ -103,8 +118,8 @@ pub fn load_settings(app: AppHandle) -> Result<Option<RedmineSettings>, String> 
 pub fn save_settings(app: AppHandle, settings: RedmineSettings) -> Result<(), String> {
     settings.validate()?;
     let path = settings_path(&app)?;
-    let content =
-        serde_json::to_string_pretty(&settings).map_err(|_| "Could not serialize settings".to_string())?;
+    let content = serde_json::to_string_pretty(&settings)
+        .map_err(|_| "Could not serialize settings".to_string())?;
     fs::write(path, content).map_err(|_| "Could not save settings".to_string())
 }
 
@@ -120,6 +135,7 @@ mod tests {
             monitor_index: 0,
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
         };
 
         assert_eq!(settings.validate().unwrap_err(), "Missing API key");
@@ -133,6 +149,7 @@ mod tests {
             monitor_index: 0,
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
         };
 
         assert_eq!(
@@ -143,14 +160,14 @@ mod tests {
 
     #[test]
     fn applies_default_panel_settings_for_legacy_config() {
-        let settings: RedmineSettings = serde_json::from_str(
-            r#"{"baseUrl":"https://redmine.example.com","apiKey":"secret"}"#,
-        )
-        .unwrap();
+        let settings: RedmineSettings =
+            serde_json::from_str(r#"{"baseUrl":"https://redmine.example.com","apiKey":"secret"}"#)
+                .unwrap();
 
         assert_eq!(settings.monitor_index, 0);
         assert_eq!(settings.dock_side, DockSide::Right);
         assert_eq!(settings.refresh_interval_seconds, 60);
+        assert_eq!(settings.language, Language::De);
     }
 
     #[test]
@@ -161,6 +178,7 @@ mod tests {
             monitor_index: 0,
             dock_side: DockSide::Right,
             refresh_interval_seconds: 5,
+            language: Language::De,
         };
 
         assert_eq!(

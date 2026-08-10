@@ -43,14 +43,33 @@ pub struct IssueStatus {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RedmineUser {
+    pub id: u64,
+    pub firstname: String,
+    pub lastname: String,
+    pub login: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct IssueStatusesResponse {
     issue_statuses: Vec<IssueStatus>,
 }
 
+#[derive(Debug, Deserialize)]
+struct UsersResponse {
+    users: Vec<RedmineUser>,
+}
+
 #[derive(Debug, Serialize)]
 struct StatusUpdateIssue {
     status_id: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct AssigneeUpdateIssue {
+    assigned_to_id: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -79,6 +98,13 @@ pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
 
 pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
     format!("{}/issues/{issue_id}.json", base_url.trim_end_matches('/'))
+}
+
+pub fn active_users_url(base_url: &str) -> String {
+    format!(
+        "{}/users.json?status=1&limit=100",
+        base_url.trim_end_matches('/')
+    )
 }
 
 pub fn validate_comment(comment: &str) -> Result<(), String> {
@@ -139,7 +165,10 @@ pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, Str
 pub async fn fetch_issue_statuses(settings: RedmineSettings) -> Result<Vec<IssueStatus>, String> {
     settings.validate()?;
 
-    let request_url = format!("{}/issue_statuses.json", settings.base_url.trim_end_matches('/'));
+    let request_url = format!(
+        "{}/issue_statuses.json",
+        settings.base_url.trim_end_matches('/')
+    );
     let response = redmine_client()
         .get(request_url)
         .header("X-Redmine-API-Key", settings.api_key)
@@ -158,6 +187,27 @@ pub async fn fetch_issue_statuses(settings: RedmineSettings) -> Result<Vec<Issue
 }
 
 #[tauri::command]
+pub async fn fetch_assignable_users(settings: RedmineSettings) -> Result<Vec<RedmineUser>, String> {
+    settings.validate()?;
+
+    let response = redmine_client()
+        .get(active_users_url(&settings.base_url))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .send()
+        .await
+        .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+
+    map_redmine_response_status(response.status())?;
+
+    let parsed = response
+        .json::<UsersResponse>()
+        .await
+        .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+    Ok(parsed.users)
+}
+
+#[tauri::command]
 pub async fn update_ticket_status(
     settings: RedmineSettings,
     ticket_id: u64,
@@ -170,6 +220,29 @@ pub async fn update_ticket_status(
         .header("X-Redmine-API-Key", settings.api_key)
         .json(&UpdateIssueBody {
             issue: StatusUpdateIssue { status_id },
+        })
+        .send()
+        .await
+        .map_err(|_| "Network failure while updating Redmine ticket".to_string())?;
+
+    map_redmine_response_status(response.status())
+}
+
+#[tauri::command]
+pub async fn assign_ticket(
+    settings: RedmineSettings,
+    ticket_id: u64,
+    user_id: u64,
+) -> Result<(), String> {
+    settings.validate()?;
+
+    let response = redmine_client()
+        .put(issue_update_url(&settings.base_url, ticket_id))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .json(&UpdateIssueBody {
+            issue: AssigneeUpdateIssue {
+                assigned_to_id: user_id,
+            },
         })
         .send()
         .await
@@ -245,6 +318,14 @@ mod tests {
         assert_eq!(
             validate_comment("   ").unwrap_err(),
             "Comment must not be empty"
+        );
+    }
+
+    #[test]
+    fn builds_active_users_url() {
+        assert_eq!(
+            active_users_url("https://redmine.example.com/"),
+            "https://redmine.example.com/users.json?status=1&limit=100"
         );
     }
 }

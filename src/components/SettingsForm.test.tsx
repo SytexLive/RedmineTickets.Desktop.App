@@ -13,7 +13,8 @@ describe("SettingsForm", () => {
           apiKey: "secret",
           monitorIndex: 1,
           dockSide: "left",
-          refreshIntervalSeconds: 120
+          refreshIntervalSeconds: 120,
+          language: "de"
         }}
         monitors={[
           { index: 0, label: "Monitor 1", isPrimary: false },
@@ -27,11 +28,14 @@ describe("SettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Monitor"), {
       target: { value: "0" }
     });
-    fireEvent.change(screen.getByLabelText("Side"), {
+    fireEvent.change(screen.getByLabelText("Seite"), {
       target: { value: "right" }
     });
-    fireEvent.change(screen.getByLabelText("Refresh interval"), {
+    fireEvent.change(screen.getByLabelText("Aktualisierungsintervall"), {
       target: { value: "45" }
+    });
+    fireEvent.change(screen.getByLabelText("Sprache"), {
+      target: { value: "en" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
@@ -40,7 +44,8 @@ describe("SettingsForm", () => {
       apiKey: "secret",
       monitorIndex: 0,
       dockSide: "right",
-      refreshIntervalSeconds: 45
+      refreshIntervalSeconds: 45,
+      language: "en"
     });
   });
 });

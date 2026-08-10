@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import type { MonitorInfo, RedmineSettings } from "../api/redmine";
+import { createTranslator, type Language } from "../i18n";
 
 type SettingsFormProps = {
   initialSettings: RedmineSettings | null;
@@ -25,6 +26,8 @@ export function SettingsForm({
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(
     String(initialSettings?.refreshIntervalSeconds ?? 60)
   );
+  const [language, setLanguage] = useState<Language>(initialSettings?.language ?? "de");
+  const t = createTranslator(language);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,14 +36,15 @@ export function SettingsForm({
       apiKey: apiKey.trim(),
       monitorIndex: Number(monitorIndex),
       dockSide,
-      refreshIntervalSeconds: Number(refreshIntervalSeconds)
+      refreshIntervalSeconds: Number(refreshIntervalSeconds),
+      language
     });
   }
 
   return (
     <form className="settings-form" onSubmit={submit}>
       <label>
-        <span>Redmine URL</span>
+        <span>{t("redmineUrl")}</span>
         <input
           autoComplete="url"
           onChange={(event) => setBaseUrl(event.target.value)}
@@ -50,7 +54,7 @@ export function SettingsForm({
         />
       </label>
       <label>
-        <span>API key</span>
+        <span>{t("apiKey")}</span>
         <input
           autoComplete="off"
           onChange={(event) => setApiKey(event.target.value)}
@@ -59,9 +63,9 @@ export function SettingsForm({
         />
       </label>
       <label>
-        <span>Monitor</span>
+        <span>{t("monitor")}</span>
         <select
-          aria-label="Monitor"
+          aria-label={t("monitor")}
           onChange={(event) => setMonitorIndex(event.target.value)}
           value={monitorIndex}
         >
@@ -77,20 +81,20 @@ export function SettingsForm({
         </select>
       </label>
       <label>
-        <span>Side</span>
+        <span>{t("side")}</span>
         <select
-          aria-label="Side"
+          aria-label={t("side")}
           onChange={(event) => setDockSide(event.target.value as "left" | "right")}
           value={dockSide}
         >
-          <option value="right">Right</option>
-          <option value="left">Left</option>
+          <option value="right">{t("sideRight")}</option>
+          <option value="left">{t("sideLeft")}</option>
         </select>
       </label>
       <label>
-        <span>Refresh interval</span>
+        <span>{t("refreshInterval")}</span>
         <input
-          aria-label="Refresh interval"
+          aria-label={t("refreshInterval")}
           min="15"
           onChange={(event) => setRefreshIntervalSeconds(event.target.value)}
           step="5"
@@ -98,8 +102,19 @@ export function SettingsForm({
           value={refreshIntervalSeconds}
         />
       </label>
+      <label>
+        <span>{t("language")}</span>
+        <select
+          aria-label={t("language")}
+          onChange={(event) => setLanguage(event.target.value as Language)}
+          value={language}
+        >
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </label>
       <button className="primary-action" disabled={saving} type="submit">
-        {saving ? "Saving" : "Save"}
+        {saving ? t("saving") : t("save")}
       </button>
     </form>
   );

@@ -13,4 +13,10 @@ describe("buildTicketUrl", () => {
       "Ticket ID must be positive"
     );
   });
+
+  it("rejects invalid ticket IDs", () => {
+    expect(() => buildTicketUrl("https://redmine.example.com", Number.NaN)).toThrow(
+      "Ticket ID must be positive"
+    );
+  });
 });

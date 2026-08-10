@@ -159,4 +159,53 @@ describe("App", () => {
       });
     });
   });
+
+  it("opens a ticket number from the header with enter", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") {
+        return Promise.resolve();
+      }
+
+      if (command === "list_monitors") {
+        return Promise.resolve([{ index: 0, label: "Monitor 1", isPrimary: true }]);
+      }
+
+      if (command === "load_settings") {
+        return Promise.resolve({
+          baseUrl: "https://redmine.example.com",
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60,
+          language: "de"
+        });
+      }
+
+      if (command === "fetch_issue_statuses") {
+        return Promise.resolve([]);
+      }
+
+      if (command === "fetch_tickets") {
+        return Promise.resolve([]);
+      }
+
+      if (command === "open_ticket_url") {
+        return Promise.resolve();
+      }
+
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    const ticketNumberInput = await screen.findByLabelText("Ticketnummer");
+    fireEvent.change(ticketNumberInput, { target: { value: "12345" } });
+    fireEvent.keyDown(ticketNumberInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+        url: "https://redmine.example.com/issues/12345"
+      });
+    });
+  });
 });

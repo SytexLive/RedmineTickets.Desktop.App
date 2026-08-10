@@ -18,6 +18,7 @@ export type TranslationKey =
   | "noUsersLoaded"
   | "openCount"
   | "openInBrowser"
+  | "openTicketNumber"
   | "redmineUrl"
   | "refreshInterval"
   | "refreshTickets"
@@ -31,6 +32,7 @@ export type TranslationKey =
   | "sideLeft"
   | "sideRight"
   | "status"
+  | "ticketNumber"
   | "title";
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
@@ -52,6 +54,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     noUsersLoaded: "Keine Benutzer geladen",
     openCount: "offen",
     openInBrowser: "Im Browser \u00f6ffnen",
+    openTicketNumber: "Ticketnummer \u00f6ffnen",
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
     refreshTickets: "Tickets aktualisieren",
@@ -65,6 +68,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideLeft: "Links",
     sideRight: "Rechts",
     status: "Status",
+    ticketNumber: "Ticketnummer",
     title: "Redmine Tickets"
   },
   en: {
@@ -85,6 +89,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     noUsersLoaded: "No users loaded",
     openCount: "open",
     openInBrowser: "Open in browser",
+    openTicketNumber: "Open ticket number",
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
     refreshTickets: "Refresh tickets",
@@ -98,6 +103,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideLeft: "Left",
     sideRight: "Right",
     status: "Status",
+    ticketNumber: "Ticket number",
     title: "Redmine Tickets"
   }
 };
@@ -137,7 +143,8 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Redmine URL must start with http:// or https://":
       "Redmine URL muss mit http:// oder https:// beginnen",
     "Refresh interval must be at least 15 seconds":
-      "Aktualisierungsintervall muss mindestens 15 Sekunden betragen"
+      "Aktualisierungsintervall muss mindestens 15 Sekunden betragen",
+    "Ticket ID must be positive": "Ticketnummer muss positiv sein"
   }
 };
 

@@ -11,7 +11,7 @@ export type Ticket = {
 };
 
 export function buildTicketUrl(baseUrl: string, ticketId: number): string {
-  if (ticketId <= 0) {
+  if (!Number.isInteger(ticketId) || ticketId <= 0) {
     throw new Error("Ticket ID must be positive");
   }
 

@@ -26,6 +26,7 @@ import {
   RefreshIcon,
   SettingsIcon
 } from "./components/icons";
+import { buildTicketUrl } from "./domain/ticket";
 import type { Ticket } from "./domain/ticket";
 import { createTranslator, formatError, type Language } from "./i18n";
 
@@ -52,6 +53,7 @@ export function App() {
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [quickTicketNumber, setQuickTicketNumber] = useState("");
 
   const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -159,6 +161,21 @@ export function App() {
     }
   }
 
+  async function handleOpenTicketNumber() {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    const ticketId = Number(quickTicketNumber.trim());
+    try {
+      await openTicketUrl(buildTicketUrl(settings.baseUrl, ticketId));
+      setQuickTicketNumber("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handleChangeStatus(ticket: Ticket, status: IssueStatus) {
     if (!settings) {
       setViewState("settings");
@@ -244,6 +261,24 @@ export function App() {
               <h1>{t("title")}</h1>
               <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
             </div>
+            <label className="ticket-number-form">
+              <span>{t("ticketNumber")}</span>
+              <input
+                aria-label={t("ticketNumber")}
+                inputMode="numeric"
+                onChange={(event) => setQuickTicketNumber(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void handleOpenTicketNumber();
+                  }
+                }}
+                pattern="[0-9]*"
+                placeholder="#12345"
+                title={t("openTicketNumber")}
+                value={quickTicketNumber}
+              />
+            </label>
             <div className="header-actions">
               <button
                 aria-label={t("refreshTickets")}

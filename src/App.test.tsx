@@ -208,4 +208,62 @@ describe("App", () => {
       });
     });
   });
+
+  it("closes the ticket context menu when clicking outside", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") {
+        return Promise.resolve();
+      }
+
+      if (command === "list_monitors") {
+        return Promise.resolve([{ index: 0, label: "Monitor 1", isPrimary: true }]);
+      }
+
+      if (command === "load_settings") {
+        return Promise.resolve({
+          baseUrl: "https://redmine.example.com",
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60,
+          language: "de"
+        });
+      }
+
+      if (command === "fetch_issue_statuses") {
+        return Promise.resolve([]);
+      }
+
+      if (command === "fetch_tickets") {
+        return Promise.resolve([
+          {
+            id: 42,
+            subject: "Login reparieren",
+            status: "Neu",
+            priority: "Hoch",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/42"
+          }
+        ]);
+      }
+
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+
+    expect(await screen.findByRole("button", { name: "Im Browser öffnen" })).toBeTruthy();
+
+    fireEvent.mouseDown(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Im Browser öffnen" })).toBeNull();
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addTicketComment,
   assignTicket,
@@ -54,6 +54,7 @@ export function App() {
   const [comment, setComment] = useState("");
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
+  const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
 
   const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -136,6 +137,29 @@ export function App() {
 
     return () => window.clearInterval(intervalId);
   }, [refreshTickets, settings]);
+
+  useEffect(() => {
+    if (!ticketContextMenu) {
+      return;
+    }
+
+    function closeContextMenuOnOutsideClick(event: MouseEvent) {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        ticketContextMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setTicketContextMenu(null);
+    }
+
+    document.addEventListener("mousedown", closeContextMenuOnOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", closeContextMenuOnOutsideClick);
+    };
+  }, [ticketContextMenu]);
 
   async function handleSave(nextSettings: RedmineSettings) {
     setSaving(true);
@@ -346,6 +370,7 @@ export function App() {
           {ticketContextMenu ? (
             <div
               className="ticket-context-menu"
+              ref={ticketContextMenuRef}
               style={{
                 left: Math.min(ticketContextMenu.x, window.innerWidth - 220),
                 top: Math.min(ticketContextMenu.y, window.innerHeight - 240)

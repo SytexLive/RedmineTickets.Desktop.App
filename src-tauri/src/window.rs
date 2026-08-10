@@ -3,24 +3,44 @@ use tauri::{LogicalPosition, LogicalSize, WebviewWindow};
 const EXPANDED_WIDTH: f64 = 360.0;
 const COLLAPSED_WIDTH: f64 = 42.0;
 
+pub fn docked_window_position(
+    monitor_x: f64,
+    monitor_y: f64,
+    monitor_width: f64,
+    monitor_height: f64,
+    window_width: f64,
+) -> (f64, f64, f64, f64) {
+    (
+        monitor_x + monitor_width - window_width,
+        monitor_y,
+        window_width,
+        monitor_height,
+    )
+}
+
 pub fn dock_webview_window(window: &WebviewWindow) -> Result<(), String> {
     let monitor = window
         .primary_monitor()
         .map_err(|_| "Could not read primary monitor".to_string())?
         .ok_or_else(|| "No primary monitor found".to_string())?;
     let size = monitor.size();
+    let position = monitor.position();
     let scale = monitor.scale_factor();
     let logical_width = size.width as f64 / scale;
     let logical_height = size.height as f64 / scale;
+    let logical_x = position.x as f64 / scale;
+    let logical_y = position.y as f64 / scale;
+    let (x, y, width, height) =
+        docked_window_position(logical_x, logical_y, logical_width, logical_height, EXPANDED_WIDTH);
 
     window
         .set_always_on_top(true)
         .map_err(|_| "Could not keep panel on top".to_string())?;
     window
-        .set_size(LogicalSize::new(EXPANDED_WIDTH, logical_height))
+        .set_size(LogicalSize::new(width, height))
         .map_err(|_| "Could not size panel".to_string())?;
     window
-        .set_position(LogicalPosition::new(logical_width - EXPANDED_WIDTH, 0.0))
+        .set_position(LogicalPosition::new(x, y))
         .map_err(|_| "Could not position panel".to_string())?;
     window
         .show()
@@ -46,18 +66,28 @@ pub fn collapse_window(window: WebviewWindow) -> Result<(), String> {
         .map_err(|_| "Could not read primary monitor".to_string())?
         .ok_or_else(|| "No primary monitor found".to_string())?;
     let size = monitor.size();
+    let position = monitor.position();
     let scale = monitor.scale_factor();
     let logical_width = size.width as f64 / scale;
     let logical_height = size.height as f64 / scale;
+    let logical_x = position.x as f64 / scale;
+    let logical_y = position.y as f64 / scale;
+    let (x, y, width, height) = docked_window_position(
+        logical_x,
+        logical_y,
+        logical_width,
+        logical_height,
+        COLLAPSED_WIDTH,
+    );
 
     window
         .set_always_on_top(true)
         .map_err(|_| "Could not keep panel on top".to_string())?;
     window
-        .set_size(LogicalSize::new(COLLAPSED_WIDTH, logical_height))
+        .set_size(LogicalSize::new(width, height))
         .map_err(|_| "Could not collapse panel".to_string())?;
     window
-        .set_position(LogicalPosition::new(logical_width - COLLAPSED_WIDTH, 0.0))
+        .set_position(LogicalPosition::new(x, y))
         .map_err(|_| "Could not position collapsed panel".to_string())?;
 
     Ok(())
@@ -94,5 +124,12 @@ mod tests {
     #[test]
     fn accepts_https_ticket_url() {
         assert!(validate_ticket_url("https://redmine.example.com/issues/42").is_ok());
+    }
+
+    #[test]
+    fn docks_inside_primary_monitor_with_global_origin() {
+        let position = docked_window_position(1920.0, 0.0, 2560.0, 1440.0, 360.0);
+
+        assert_eq!(position, (4120.0, 0.0, 360.0, 1440.0));
     }
 }

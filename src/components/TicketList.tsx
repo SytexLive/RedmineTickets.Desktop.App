@@ -5,12 +5,34 @@ type TicketListProps = {
   onOpenTicket: (ticket: Ticket) => void;
 };
 
+function priorityClassName(priority: string) {
+  const normalizedPriority = priority.trim().toLowerCase();
+
+  if (["immediate", "urgent"].includes(normalizedPriority)) {
+    return "ticket-priority-urgent";
+  }
+
+  if (normalizedPriority === "high") {
+    return "ticket-priority-high";
+  }
+
+  if (normalizedPriority === "normal") {
+    return "ticket-priority-normal";
+  }
+
+  if (normalizedPriority === "low") {
+    return "ticket-priority-low";
+  }
+
+  return "ticket-priority-default";
+}
+
 export function TicketList({ tickets, onOpenTicket }: TicketListProps) {
   return (
     <section className="ticket-list" aria-label="Redmine tickets">
       {tickets.map((ticket) => (
         <button
-          className="ticket-row"
+          className={`ticket-row ${priorityClassName(ticket.priority)}`}
           key={ticket.id}
           type="button"
           onClick={() => onOpenTicket(ticket)}

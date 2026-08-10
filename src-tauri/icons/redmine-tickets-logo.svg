@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Redmine Tickets icon">
+  <defs>
+    <linearGradient id="background" x1="160" y1="120" x2="860" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1457A8"/>
+      <stop offset="1" stop-color="#084087"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="220" fill="url(#background)"/>
+  <path d="M260 330H758L842 414V472A32 32 0 0 0 842 536V662H260A50 50 0 0 1 260 330Z" fill="#FFFFFF"/>
+  <path d="M268 330H338V662H268A58 58 0 0 1 210 604V388A58 58 0 0 1 268 330Z" fill="#DC2626"/>
+  <path d="M758 330L842 414H758Z" fill="#E2E7EE"/>
+  <circle cx="435" cy="417" r="35" fill="#DC2626"/>
+  <path d="M410 472H650M410 548H600" fill="none" stroke="#CAD2DE" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="720" cy="635" r="90" fill="#1457A8"/>
+  <path d="M672 632L715 674L775 600" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

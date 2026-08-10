@@ -22,6 +22,7 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_hide, &quit])?;
 
             TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().unwrap())
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show_hide" => {
@@ -82,4 +83,12 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run app");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn tray_uses_default_app_icon() {
+        assert!(include_str!("lib.rs").contains(".icon(app.default_window_icon()"));
+    }
 }

@@ -132,12 +132,16 @@ input {
   border-color: #8796ad;
 }
 
-.ticket-priority-urgent::before {
-  background: #d92d20;
+.ticket-priority-immediate::before {
+  background: #7f1d1d;
+}
+
+.ticket-priority-very-high::before {
+  background: #dc2626;
 }
 
 .ticket-priority-high::before {
-  background: #f97316;
+  background: #f59e0b;
 }
 
 .ticket-priority-normal::before {

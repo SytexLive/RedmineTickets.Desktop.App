@@ -8,11 +8,15 @@ type TicketListProps = {
 function priorityClassName(priority: string) {
   const normalizedPriority = priority.trim().toLowerCase();
 
-  if (["immediate", "urgent"].includes(normalizedPriority)) {
-    return "ticket-priority-urgent";
+  if (["sofort", "immediate"].includes(normalizedPriority)) {
+    return "ticket-priority-immediate";
   }
 
-  if (normalizedPriority === "high") {
+  if (["sehr hoch", "urgent"].includes(normalizedPriority)) {
+    return "ticket-priority-very-high";
+  }
+
+  if (["hoch", "high"].includes(normalizedPriority)) {
     return "ticket-priority-high";
   }
 
@@ -20,7 +24,7 @@ function priorityClassName(priority: string) {
     return "ticket-priority-normal";
   }
 
-  if (normalizedPriority === "low") {
+  if (["niedrig", "low"].includes(normalizedPriority)) {
     return "ticket-priority-low";
   }
 

@@ -49,4 +49,41 @@ describe("TicketList", () => {
       "ticket-priority-high"
     );
   });
+
+  it("maps German Redmine priority labels to distinct priority classes", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 9,
+            subject: "Handle immediately",
+            status: "New",
+            priority: "Sofort",
+            project: "Desktop",
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/9"
+          },
+          {
+            id: 10,
+            subject: "Handle very high",
+            status: "New",
+            priority: "Sehr hoch",
+            project: "Desktop",
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/10"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /handle immediately/i })).toHaveClass(
+      "ticket-priority-immediate"
+    );
+    expect(screen.getByRole("button", { name: /handle very high/i })).toHaveClass(
+      "ticket-priority-very-high"
+    );
+  });
 });

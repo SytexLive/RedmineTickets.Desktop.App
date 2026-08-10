@@ -4,11 +4,52 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+pub fn default_refresh_interval_seconds() -> u64 {
+    60
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DockSide {
+    Left,
+    Right,
+}
+
+impl Default for DockSide {
+    fn default() -> Self {
+        Self::Right
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelSettings {
+    #[serde(default)]
+    pub monitor_index: usize,
+    #[serde(default)]
+    pub dock_side: DockSide,
+}
+
+impl Default for PanelSettings {
+    fn default() -> Self {
+        Self {
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RedmineSettings {
     pub base_url: String,
     pub api_key: String,
+    #[serde(default)]
+    pub monitor_index: usize,
+    #[serde(default)]
+    pub dock_side: DockSide,
+    #[serde(default = "default_refresh_interval_seconds")]
+    pub refresh_interval_seconds: u64,
 }
 
 impl RedmineSettings {
@@ -26,7 +67,13 @@ impl RedmineSettings {
         match parsed.scheme() {
             "http" | "https" => Ok(()),
             _ => Err("Redmine URL must start with http:// or https://".to_string()),
+        }?;
+
+        if self.refresh_interval_seconds < 15 {
+            return Err("Refresh interval must be at least 15 seconds".to_string());
         }
+
+        Ok(())
     }
 }
 
@@ -70,6 +117,9 @@ mod tests {
         let settings = RedmineSettings {
             base_url: "https://redmine.example.com".to_string(),
             api_key: "".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
         };
 
         assert_eq!(settings.validate().unwrap_err(), "Missing API key");
@@ -80,11 +130,42 @@ mod tests {
         let settings = RedmineSettings {
             base_url: "file:///redmine".to_string(),
             api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
         };
 
         assert_eq!(
             settings.validate().unwrap_err(),
             "Redmine URL must start with http:// or https://"
+        );
+    }
+
+    #[test]
+    fn applies_default_panel_settings_for_legacy_config() {
+        let settings: RedmineSettings = serde_json::from_str(
+            r#"{"baseUrl":"https://redmine.example.com","apiKey":"secret"}"#,
+        )
+        .unwrap();
+
+        assert_eq!(settings.monitor_index, 0);
+        assert_eq!(settings.dock_side, DockSide::Right);
+        assert_eq!(settings.refresh_interval_seconds, 60);
+    }
+
+    #[test]
+    fn rejects_refresh_interval_below_minimum() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: 5,
+        };
+
+        assert_eq!(
+            settings.validate().unwrap_err(),
+            "Refresh interval must be at least 15 seconds"
         );
     }
 }

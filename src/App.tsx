@@ -4,7 +4,9 @@ import {
   dockWindow,
   expandWindow,
   fetchTickets,
+  listMonitors,
   loadSettings,
+  type MonitorInfo,
   openTicketUrl,
   saveSettings,
   type RedmineSettings
@@ -28,6 +30,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
 
   const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -44,7 +47,10 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
-    dockWindow().catch(() => undefined);
+    dockWindow(null).catch(() => undefined);
+    listMonitors()
+      .then(setMonitors)
+      .catch(() => setMonitors([]));
     loadSettings()
       .then((loadedSettings) => {
         if (cancelled) {
@@ -56,6 +62,7 @@ export function App() {
           setViewState("settings");
           return;
         }
+        void dockWindow(loadedSettings);
         void refreshTickets(loadedSettings);
       })
       .catch((err) => {
@@ -77,9 +84,10 @@ export function App() {
       return;
     }
 
+    const intervalMs = Math.max(settings.refreshIntervalSeconds, 15) * 1000;
     const intervalId = window.setInterval(() => {
       void refreshTickets(settings);
-    }, 60_000);
+    }, intervalMs);
 
     return () => window.clearInterval(intervalId);
   }, [refreshTickets, settings]);
@@ -90,6 +98,7 @@ export function App() {
     try {
       await saveSettings(nextSettings);
       setSettings(nextSettings);
+      await dockWindow(nextSettings);
       await refreshTickets(nextSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -108,18 +117,21 @@ export function App() {
 
   function handleCollapse() {
     setCollapsed(true);
-    void collapseWindow();
+    void collapseWindow(settings);
   }
 
   function handleExpand() {
     setCollapsed(false);
-    void expandWindow();
+    void expandWindow(settings);
   }
 
   const showingSettings = viewState === "settings";
+  const dockSide = settings?.dockSide ?? "right";
 
   return (
-    <main className={`app-shell${collapsed ? " app-shell-collapsed" : ""}`}>
+    <main
+      className={`app-shell app-shell-${dockSide}${collapsed ? " app-shell-collapsed" : ""}`}
+    >
       {collapsed ? (
         <button
           aria-label="Expand panel"
@@ -128,7 +140,7 @@ export function App() {
           type="button"
           onClick={handleExpand}
         >
-          <ChevronLeftIcon />
+          {dockSide === "right" ? <ChevronLeftIcon /> : <ChevronRightIcon />}
         </button>
       ) : (
         <>
@@ -181,6 +193,7 @@ export function App() {
           {showingSettings ? (
             <SettingsForm
               initialSettings={settings}
+              monitors={monitors}
               onSave={handleSave}
               saving={saving}
             />

@@ -18,7 +18,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -211,6 +212,15 @@ input {
   padding: 8px 10px;
 }
 
+.settings-form select {
+  width: 100%;
+  height: 38px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px 10px;
+}
+
 .primary-action {
   height: 38px;
   border: 0;
@@ -246,4 +256,13 @@ input {
   height: 54px;
   border-radius: 10px 0 0 10px;
   color: #1457a8;
+}
+
+.app-shell-left {
+  border-right: 1px solid #d9dee7;
+  border-left: 0;
+}
+
+.app-shell-left .edge-handle {
+  border-radius: 0 10px 10px 0;
 }

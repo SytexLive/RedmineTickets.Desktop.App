@@ -1,4 +1,7 @@
-use tauri::{LogicalPosition, LogicalSize, WebviewWindow};
+use serde::Serialize;
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Monitor, WebviewWindow};
+
+use crate::settings::{DockSide, PanelSettings};
 
 const EXPANDED_WIDTH: f64 = 360.0;
 const COLLAPSED_WIDTH: f64 = 42.0;
@@ -9,20 +12,118 @@ pub fn docked_window_position(
     monitor_width: f64,
     monitor_height: f64,
     window_width: f64,
+    dock_side: DockSide,
 ) -> (f64, f64, f64, f64) {
-    (
-        monitor_x + monitor_width - window_width,
-        monitor_y,
-        window_width,
-        monitor_height,
-    )
+    let x = match dock_side {
+        DockSide::Left => monitor_x,
+        DockSide::Right => monitor_x + monitor_width - window_width,
+    };
+
+    (x, monitor_y, window_width, monitor_height)
 }
 
-pub fn dock_webview_window(window: &WebviewWindow) -> Result<(), String> {
-    let monitor = window
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorInfo {
+    pub index: usize,
+    pub label: String,
+    pub is_primary: bool,
+}
+
+fn primary_monitor_position(app: &AppHandle) -> Result<Option<tauri::PhysicalPosition<i32>>, String> {
+    Ok(app
         .primary_monitor()
         .map_err(|_| "Could not read primary monitor".to_string())?
-        .ok_or_else(|| "No primary monitor found".to_string())?;
+        .as_ref()
+        .map(|monitor| *monitor.position()))
+}
+
+fn primary_monitor_position_for_window(
+    window: &WebviewWindow,
+) -> Result<Option<tauri::PhysicalPosition<i32>>, String> {
+    Ok(window
+        .primary_monitor()
+        .map_err(|_| "Could not read primary monitor".to_string())?
+        .as_ref()
+        .map(|monitor| *monitor.position()))
+}
+
+fn order_monitors(
+    monitors: Vec<Monitor>,
+    primary_position: Option<tauri::PhysicalPosition<i32>>,
+) -> Vec<Monitor> {
+    let mut primary = Vec::new();
+    let mut rest = Vec::new();
+
+    for monitor in monitors {
+        if primary_position
+            .map(|position| position == *monitor.position())
+            .unwrap_or(false)
+        {
+            primary.push(monitor);
+        } else {
+            rest.push(monitor);
+        }
+    }
+
+    primary.extend(rest);
+    primary
+}
+
+#[tauri::command]
+pub fn list_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, String> {
+    let primary_position = primary_monitor_position(&app)?;
+    let monitors = order_monitors(
+        app
+        .available_monitors()
+            .map_err(|_| "Could not read monitors".to_string())?,
+        primary_position,
+    );
+
+    Ok(monitors
+        .iter()
+        .enumerate()
+        .map(|(index, monitor)| {
+            let size = monitor.size();
+            let is_primary = primary_position
+                .map(|position| position == *monitor.position())
+                .unwrap_or(index == 0);
+            MonitorInfo {
+                index,
+                label: format!(
+                    "Monitor {} ({}x{}){}",
+                    index + 1,
+                    size.width,
+                    size.height,
+                    if is_primary { " - Primary" } else { "" }
+                ),
+                is_primary,
+            }
+        })
+        .collect())
+}
+
+fn selected_monitor(window: &WebviewWindow, settings: PanelSettings) -> Result<Monitor, String> {
+    let primary_position = primary_monitor_position_for_window(window)?;
+    let monitors = order_monitors(
+        window
+        .available_monitors()
+            .map_err(|_| "Could not read monitors".to_string())?,
+        primary_position,
+    );
+
+    if let Some(monitor) = monitors.into_iter().nth(settings.monitor_index) {
+        return Ok(monitor);
+    }
+
+    window
+        .primary_monitor()
+        .map_err(|_| "Could not read primary monitor".to_string())?
+        .ok_or_else(|| "No primary monitor found".to_string())
+}
+
+pub fn dock_webview_window(window: &WebviewWindow, settings: PanelSettings) -> Result<(), String> {
+    let monitor = selected_monitor(window, settings)?;
     let size = monitor.size();
     let position = monitor.position();
     let scale = monitor.scale_factor();
@@ -30,8 +131,14 @@ pub fn dock_webview_window(window: &WebviewWindow) -> Result<(), String> {
     let logical_height = size.height as f64 / scale;
     let logical_x = position.x as f64 / scale;
     let logical_y = position.y as f64 / scale;
-    let (x, y, width, height) =
-        docked_window_position(logical_x, logical_y, logical_width, logical_height, EXPANDED_WIDTH);
+    let (x, y, width, height) = docked_window_position(
+        logical_x,
+        logical_y,
+        logical_width,
+        logical_height,
+        EXPANDED_WIDTH,
+        settings.dock_side,
+    );
 
     window
         .set_always_on_top(true)
@@ -50,21 +157,19 @@ pub fn dock_webview_window(window: &WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn dock_window(window: WebviewWindow) -> Result<(), String> {
-    dock_webview_window(&window)
+pub fn dock_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
+    dock_webview_window(&window, settings.unwrap_or_default())
 }
 
 #[tauri::command]
-pub fn expand_window(window: WebviewWindow) -> Result<(), String> {
-    dock_webview_window(&window)
+pub fn expand_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
+    dock_webview_window(&window, settings.unwrap_or_default())
 }
 
 #[tauri::command]
-pub fn collapse_window(window: WebviewWindow) -> Result<(), String> {
-    let monitor = window
-        .primary_monitor()
-        .map_err(|_| "Could not read primary monitor".to_string())?
-        .ok_or_else(|| "No primary monitor found".to_string())?;
+pub fn collapse_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
+    let settings = settings.unwrap_or_default();
+    let monitor = selected_monitor(&window, settings)?;
     let size = monitor.size();
     let position = monitor.position();
     let scale = monitor.scale_factor();
@@ -78,6 +183,7 @@ pub fn collapse_window(window: WebviewWindow) -> Result<(), String> {
         logical_width,
         logical_height,
         COLLAPSED_WIDTH,
+        settings.dock_side,
     );
 
     window
@@ -128,8 +234,17 @@ mod tests {
 
     #[test]
     fn docks_inside_primary_monitor_with_global_origin() {
-        let position = docked_window_position(1920.0, 0.0, 2560.0, 1440.0, 360.0);
+        let position =
+            docked_window_position(1920.0, 0.0, 2560.0, 1440.0, 360.0, DockSide::Right);
 
         assert_eq!(position, (4120.0, 0.0, 360.0, 1440.0));
+    }
+
+    #[test]
+    fn docks_to_left_side_of_selected_monitor() {
+        let position =
+            docked_window_position(-1920.0, 0.0, 1920.0, 1080.0, 360.0, DockSide::Left);
+
+        assert_eq!(position, (-1920.0, 0.0, 360.0, 1080.0));
     }
 }

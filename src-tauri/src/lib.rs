@@ -58,7 +58,7 @@ pub fn run() {
                 .build(app)?;
 
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window::dock_webview_window(&window);
+                let _ = window::dock_webview_window(&window, settings::PanelSettings::default());
             }
 
             Ok(())
@@ -68,6 +68,7 @@ pub fn run() {
             redmine::fetch_tickets,
             settings::load_settings,
             settings::save_settings,
+            window::list_monitors,
             window::dock_window,
             window::collapse_window,
             window::expand_window,

@@ -19,10 +19,17 @@ describe("App", () => {
         return Promise.resolve();
       }
 
+      if (command === "list_monitors") {
+        return Promise.resolve([{ index: 0, label: "Monitor 1", isPrimary: true }]);
+      }
+
       if (command === "load_settings") {
         return Promise.resolve({
           baseUrl: "https://redmine.example.com",
-          apiKey: "secret"
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60
         });
       }
 

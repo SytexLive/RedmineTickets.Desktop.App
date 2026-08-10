@@ -426,6 +426,16 @@ export function App() {
                   x
                 </button>
               </div>
+              <div className="comment-dialog-ticket-context">
+                <div>
+                  <span>{t("ticketTitle")}</span>
+                  <strong>{commentTicket.subject}</strong>
+                </div>
+                <div>
+                  <span>{t("project")}</span>
+                  <strong>{commentTicket.project}</strong>
+                </div>
+              </div>
               <textarea
                 autoFocus
                 onChange={(event) => setComment(event.target.value)}

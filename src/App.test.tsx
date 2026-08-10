@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -112,6 +112,11 @@ describe("App", () => {
     const ticket = await screen.findByText("Login reparieren");
     fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
     fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Titel")).toBeInTheDocument();
+    expect(within(dialog).getByText("Login reparieren")).toBeInTheDocument();
+    expect(within(dialog).getByText("Projekt")).toBeInTheDocument();
+    expect(within(dialog).getByText("Desktop")).toBeInTheDocument();
     await screen.findByRole("option", { name: "Max Mustermann" });
     fireEvent.change(screen.getByPlaceholderText("Kommentar"), {
       target: { value: "Bitte übernehmen." }

@@ -19,6 +19,7 @@ export type TranslationKey =
   | "openCount"
   | "openInBrowser"
   | "openTicketNumber"
+  | "project"
   | "redmineUrl"
   | "refreshInterval"
   | "refreshTickets"
@@ -33,6 +34,7 @@ export type TranslationKey =
   | "sideRight"
   | "status"
   | "ticketNumber"
+  | "ticketTitle"
   | "title";
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
@@ -55,6 +57,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openCount: "offen",
     openInBrowser: "Im Browser \u00f6ffnen",
     openTicketNumber: "Ticketnummer \u00f6ffnen",
+    project: "Projekt",
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
     refreshTickets: "Tickets aktualisieren",
@@ -69,6 +72,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideRight: "Rechts",
     status: "Status",
     ticketNumber: "Ticketnummer",
+    ticketTitle: "Titel",
     title: "Redmine Tickets"
   },
   en: {
@@ -90,6 +94,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openCount: "open",
     openInBrowser: "Open in browser",
     openTicketNumber: "Open ticket number",
+    project: "Project",
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
     refreshTickets: "Refresh tickets",
@@ -104,6 +109,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideRight: "Right",
     status: "Status",
     ticketNumber: "Ticket number",
+    ticketTitle: "Title",
     title: "Redmine Tickets"
   }
 };

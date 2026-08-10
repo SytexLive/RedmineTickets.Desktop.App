@@ -3,6 +3,7 @@ import type { Ticket } from "../domain/ticket";
 type TicketListProps = {
   tickets: Ticket[];
   onOpenTicket: (ticket: Ticket) => void;
+  onTicketContextMenu?: (ticket: Ticket, position: { x: number; y: number }) => void;
 };
 
 function priorityClassName(priority: string) {
@@ -31,7 +32,11 @@ function priorityClassName(priority: string) {
   return "ticket-priority-default";
 }
 
-export function TicketList({ tickets, onOpenTicket }: TicketListProps) {
+export function TicketList({
+  tickets,
+  onOpenTicket,
+  onTicketContextMenu
+}: TicketListProps) {
   return (
     <section className="ticket-list" aria-label="Redmine tickets">
       {tickets.map((ticket) => (
@@ -40,6 +45,14 @@ export function TicketList({ tickets, onOpenTicket }: TicketListProps) {
           key={ticket.id}
           type="button"
           onClick={() => onOpenTicket(ticket)}
+          onContextMenu={(event) => {
+            if (!onTicketContextMenu) {
+              return;
+            }
+
+            event.preventDefault();
+            onTicketContextMenu(ticket, { x: event.clientX, y: event.clientY });
+          }}
         >
           <span className="ticket-row-top">
             <span className="ticket-id">#{ticket.id}</span>

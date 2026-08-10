@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { TicketList } from "./TicketList";
 
 describe("TicketList", () => {
@@ -84,6 +84,39 @@ describe("TicketList", () => {
     );
     expect(screen.getByRole("button", { name: /handle very high/i })).toHaveClass(
       "ticket-priority-very-high"
+    );
+  });
+
+  it("opens a ticket context menu on right click", () => {
+    const onTicketContextMenu = vi.fn();
+
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 11,
+            subject: "Needs status change",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/11"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+        onTicketContextMenu={onTicketContextMenu}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: /needs status change/i }), {
+      clientX: 20,
+      clientY: 30
+    });
+
+    expect(onTicketContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 11 }),
+      { x: 20, y: 30 }
     );
   });
 });

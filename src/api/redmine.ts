@@ -15,6 +15,11 @@ export type MonitorInfo = {
   isPrimary: boolean;
 };
 
+export type IssueStatus = {
+  id: number;
+  name: string;
+};
+
 type PanelSettings = Pick<RedmineSettings, "monitorIndex" | "dockSide">;
 
 function toPanelSettings(settings?: RedmineSettings | null): PanelSettings | null {
@@ -38,6 +43,26 @@ export function saveSettings(settings: RedmineSettings): Promise<void> {
 
 export function fetchTickets(settings: RedmineSettings): Promise<Ticket[]> {
   return invoke("fetch_tickets", { settings });
+}
+
+export function fetchIssueStatuses(settings: RedmineSettings): Promise<IssueStatus[]> {
+  return invoke("fetch_issue_statuses", { settings });
+}
+
+export function updateTicketStatus(
+  settings: RedmineSettings,
+  ticketId: number,
+  statusId: number
+): Promise<void> {
+  return invoke("update_ticket_status", { settings, ticketId, statusId });
+}
+
+export function addTicketComment(
+  settings: RedmineSettings,
+  ticketId: number,
+  comment: string
+): Promise<void> {
+  return invoke("add_ticket_comment", { settings, ticketId, comment });
 }
 
 export function listMonitors(): Promise<MonitorInfo[]> {

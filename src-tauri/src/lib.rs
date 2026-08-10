@@ -65,7 +65,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             ping,
+            redmine::add_ticket_comment,
             redmine::fetch_tickets,
+            redmine::fetch_issue_statuses,
+            redmine::update_ticket_status,
             settings::load_settings,
             settings::save_settings,
             window::list_monitors,

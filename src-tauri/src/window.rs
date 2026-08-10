@@ -124,8 +124,9 @@ fn selected_monitor(window: &WebviewWindow, settings: PanelSettings) -> Result<M
 
 pub fn dock_webview_window(window: &WebviewWindow, settings: PanelSettings) -> Result<(), String> {
     let monitor = selected_monitor(window, settings)?;
-    let size = monitor.size();
-    let position = monitor.position();
+    let work_area = monitor.work_area();
+    let size = work_area.size;
+    let position = work_area.position;
     let scale = monitor.scale_factor();
     let logical_width = size.width as f64 / scale;
     let logical_height = size.height as f64 / scale;
@@ -170,8 +171,9 @@ pub fn expand_window(window: WebviewWindow, settings: Option<PanelSettings>) -> 
 pub fn collapse_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
     let settings = settings.unwrap_or_default();
     let monitor = selected_monitor(&window, settings)?;
-    let size = monitor.size();
-    let position = monitor.position();
+    let work_area = monitor.work_area();
+    let size = work_area.size;
+    let position = work_area.position;
     let scale = monitor.scale_factor();
     let logical_width = size.width as f64 / scale;
     let logical_height = size.height as f64 / scale;
@@ -246,5 +248,13 @@ mod tests {
             docked_window_position(-1920.0, 0.0, 1920.0, 1080.0, 360.0, DockSide::Left);
 
         assert_eq!(position, (-1920.0, 0.0, 360.0, 1080.0));
+    }
+
+    #[test]
+    fn uses_work_area_height_to_avoid_taskbar() {
+        let position =
+            docked_window_position(0.0, 0.0, 1920.0, 1040.0, 360.0, DockSide::Right);
+
+        assert_eq!(position, (1560.0, 0.0, 360.0, 1040.0));
     }
 }

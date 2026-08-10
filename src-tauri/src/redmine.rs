@@ -36,6 +36,33 @@ struct RedmineIssuesResponse {
     issues: Vec<RedmineIssue>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueStatus {
+    pub id: u64,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct IssueStatusesResponse {
+    issue_statuses: Vec<IssueStatus>,
+}
+
+#[derive(Debug, Serialize)]
+struct StatusUpdateIssue {
+    status_id: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct CommentUpdateIssue {
+    notes: String,
+}
+
+#[derive(Debug, Serialize)]
+struct UpdateIssueBody<T> {
+    issue: T,
+}
+
 pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
     let base_url = base_url.trim_end_matches('/');
     Ticket {
@@ -50,6 +77,34 @@ pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
     }
 }
 
+pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
+    format!("{}/issues/{issue_id}.json", base_url.trim_end_matches('/'))
+}
+
+pub fn validate_comment(comment: &str) -> Result<(), String> {
+    if comment.trim().is_empty() {
+        return Err("Comment must not be empty".to_string());
+    }
+
+    Ok(())
+}
+
+fn redmine_client() -> reqwest::Client {
+    reqwest::Client::new()
+}
+
+fn map_redmine_response_status(status: reqwest::StatusCode) -> Result<(), String> {
+    if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+        return Err("Redmine authentication failed".to_string());
+    }
+
+    if !status.is_success() {
+        return Err(format!("Redmine returned HTTP {status}"));
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
     settings.validate()?;
@@ -59,22 +114,14 @@ pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, Str
         settings.base_url.trim_end_matches('/')
     );
 
-    let response = reqwest::Client::new()
+    let response = redmine_client()
         .get(request_url)
         .header("X-Redmine-API-Key", settings.api_key)
         .send()
         .await
         .map_err(|_| "Network failure while contacting Redmine".to_string())?;
 
-    if response.status() == reqwest::StatusCode::UNAUTHORIZED
-        || response.status() == reqwest::StatusCode::FORBIDDEN
-    {
-        return Err("Redmine authentication failed".to_string());
-    }
-
-    if !response.status().is_success() {
-        return Err(format!("Redmine returned HTTP {}", response.status()));
-    }
+    map_redmine_response_status(response.status())?;
 
     let parsed = response
         .json::<RedmineIssuesResponse>()
@@ -86,6 +133,73 @@ pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, Str
         .into_iter()
         .map(|issue| normalize_issue(&settings.base_url, issue))
         .collect())
+}
+
+#[tauri::command]
+pub async fn fetch_issue_statuses(settings: RedmineSettings) -> Result<Vec<IssueStatus>, String> {
+    settings.validate()?;
+
+    let request_url = format!("{}/issue_statuses.json", settings.base_url.trim_end_matches('/'));
+    let response = redmine_client()
+        .get(request_url)
+        .header("X-Redmine-API-Key", settings.api_key)
+        .send()
+        .await
+        .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+
+    map_redmine_response_status(response.status())?;
+
+    let parsed = response
+        .json::<IssueStatusesResponse>()
+        .await
+        .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+    Ok(parsed.issue_statuses)
+}
+
+#[tauri::command]
+pub async fn update_ticket_status(
+    settings: RedmineSettings,
+    ticket_id: u64,
+    status_id: u64,
+) -> Result<(), String> {
+    settings.validate()?;
+
+    let response = redmine_client()
+        .put(issue_update_url(&settings.base_url, ticket_id))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .json(&UpdateIssueBody {
+            issue: StatusUpdateIssue { status_id },
+        })
+        .send()
+        .await
+        .map_err(|_| "Network failure while updating Redmine ticket".to_string())?;
+
+    map_redmine_response_status(response.status())
+}
+
+#[tauri::command]
+pub async fn add_ticket_comment(
+    settings: RedmineSettings,
+    ticket_id: u64,
+    comment: String,
+) -> Result<(), String> {
+    settings.validate()?;
+    validate_comment(&comment)?;
+
+    let response = redmine_client()
+        .put(issue_update_url(&settings.base_url, ticket_id))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .json(&UpdateIssueBody {
+            issue: CommentUpdateIssue {
+                notes: comment.trim().to_string(),
+            },
+        })
+        .send()
+        .await
+        .map_err(|_| "Network failure while updating Redmine ticket".to_string())?;
+
+    map_redmine_response_status(response.status())
 }
 
 #[cfg(test)]
@@ -116,5 +230,21 @@ mod tests {
 
         assert_eq!(ticket.id, 42);
         assert_eq!(ticket.url, "https://redmine.example.com/issues/42");
+    }
+
+    #[test]
+    fn builds_issue_update_url_without_duplicate_slashes() {
+        assert_eq!(
+            issue_update_url("https://redmine.example.com/", 42),
+            "https://redmine.example.com/issues/42.json"
+        );
+    }
+
+    #[test]
+    fn rejects_blank_ticket_comment() {
+        assert_eq!(
+            validate_comment("   ").unwrap_err(),
+            "Comment must not be empty"
+        );
     }
 }

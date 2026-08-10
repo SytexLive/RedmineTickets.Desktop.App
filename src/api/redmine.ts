@@ -23,9 +23,7 @@ export type IssueStatus = {
 
 export type RedmineUser = {
   id: number;
-  firstname: string;
-  lastname: string;
-  login: string;
+  name: string;
 };
 
 type PanelSettings = Pick<RedmineSettings, "monitorIndex" | "dockSide">;
@@ -57,8 +55,11 @@ export function fetchIssueStatuses(settings: RedmineSettings): Promise<IssueStat
   return invoke("fetch_issue_statuses", { settings });
 }
 
-export function fetchAssignableUsers(settings: RedmineSettings): Promise<RedmineUser[]> {
-  return invoke("fetch_assignable_users", { settings });
+export function fetchAssignableUsers(
+  settings: RedmineSettings,
+  projectId: number
+): Promise<RedmineUser[]> {
+  return invoke("fetch_assignable_users", { settings, projectId });
 }
 
 export function updateTicketStatus(

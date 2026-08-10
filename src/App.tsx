@@ -74,9 +74,12 @@ export function App() {
     }
   }, []);
 
-  const refreshAssignableUsers = useCallback(async (nextSettings: RedmineSettings) => {
+  const refreshAssignableUsers = useCallback(async (
+    nextSettings: RedmineSettings,
+    projectId: number
+  ) => {
     try {
-      const loadedUsers = await fetchAssignableUsers(nextSettings);
+      const loadedUsers = await fetchAssignableUsers(nextSettings, projectId);
       setAssignableUsers(loadedUsers);
     } catch {
       setAssignableUsers([]);
@@ -103,7 +106,6 @@ export function App() {
         }
         void dockWindow(loadedSettings);
         void refreshIssueStatuses(loadedSettings);
-        void refreshAssignableUsers(loadedSettings);
         void refreshTickets(loadedSettings);
       })
       .catch((err) => {
@@ -118,7 +120,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refreshAssignableUsers, refreshIssueStatuses, refreshTickets]);
+  }, [refreshIssueStatuses, refreshTickets]);
 
   useEffect(() => {
     if (!settings) {
@@ -141,7 +143,6 @@ export function App() {
       setSettings(nextSettings);
       await dockWindow(nextSettings);
       await refreshIssueStatuses(nextSettings);
-      await refreshAssignableUsers(nextSettings);
       await refreshTickets(nextSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -191,6 +192,18 @@ export function App() {
       await refreshTickets(settings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function handleOpenCommentDialog(ticket: Ticket) {
+    setCommentTicket(ticket);
+    setComment("");
+    setSelectedAssigneeId("");
+    setAssignableUsers([]);
+    setTicketContextMenu(null);
+
+    if (settings) {
+      void refreshAssignableUsers(settings, ticket.projectId);
     }
   }
 
@@ -333,10 +346,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setCommentTicket(ticketContextMenu.ticket);
-                  setComment("");
-                  setSelectedAssigneeId("");
-                  setTicketContextMenu(null);
+                  handleOpenCommentDialog(ticketContextMenu.ticket);
                 }}
               >
                 {t("addComment")}
@@ -372,7 +382,7 @@ export function App() {
                   <option value="">{t("noAssignment")}</option>
                   {assignableUsers.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.firstname} {user.lastname}
+                      {user.name}
                     </option>
                   ))}
                 </select>

@@ -10,6 +10,7 @@ pub struct Ticket {
     pub status: String,
     pub priority: String,
     pub project: String,
+    pub project_id: u64,
     pub tracker: String,
     pub updated_at: String,
     pub url: String,
@@ -17,6 +18,7 @@ pub struct Ticket {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct NamedValue {
+    pub id: u64,
     pub name: String,
 }
 
@@ -47,9 +49,7 @@ pub struct IssueStatus {
 #[serde(rename_all = "camelCase")]
 pub struct RedmineUser {
     pub id: u64,
-    pub firstname: String,
-    pub lastname: String,
-    pub login: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,8 +58,13 @@ struct IssueStatusesResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct UsersResponse {
-    users: Vec<RedmineUser>,
+struct MembershipsResponse {
+    memberships: Vec<ProjectMembership>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProjectMembership {
+    user: Option<RedmineUser>,
 }
 
 #[derive(Debug, Serialize)]
@@ -90,6 +95,7 @@ pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
         status: issue.status.name,
         priority: issue.priority.name,
         project: issue.project.name,
+        project_id: issue.project.id,
         tracker: issue.tracker.name,
         updated_at: issue.updated_on,
         url: format!("{base_url}/issues/{}", issue.id),
@@ -100,10 +106,10 @@ pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
     format!("{}/issues/{issue_id}.json", base_url.trim_end_matches('/'))
 }
 
-pub fn active_users_url(base_url: &str) -> String {
+pub fn project_memberships_url(base_url: &str, project_id: u64) -> String {
     format!(
-        "{}/users.json?status=1&limit=100",
-        base_url.trim_end_matches('/')
+        "{}/projects/{project_id}/memberships.json?limit=100",
+        base_url.trim_end_matches('/'),
     )
 }
 
@@ -187,11 +193,14 @@ pub async fn fetch_issue_statuses(settings: RedmineSettings) -> Result<Vec<Issue
 }
 
 #[tauri::command]
-pub async fn fetch_assignable_users(settings: RedmineSettings) -> Result<Vec<RedmineUser>, String> {
+pub async fn fetch_assignable_users(
+    settings: RedmineSettings,
+    project_id: u64,
+) -> Result<Vec<RedmineUser>, String> {
     settings.validate()?;
 
     let response = redmine_client()
-        .get(active_users_url(&settings.base_url))
+        .get(project_memberships_url(&settings.base_url, project_id))
         .header("X-Redmine-API-Key", settings.api_key)
         .send()
         .await
@@ -200,11 +209,15 @@ pub async fn fetch_assignable_users(settings: RedmineSettings) -> Result<Vec<Red
     map_redmine_response_status(response.status())?;
 
     let parsed = response
-        .json::<UsersResponse>()
+        .json::<MembershipsResponse>()
         .await
         .map_err(|_| "Redmine returned an unexpected response".to_string())?;
 
-    Ok(parsed.users)
+    Ok(parsed
+        .memberships
+        .into_iter()
+        .filter_map(|membership| membership.user)
+        .collect())
 }
 
 #[tauri::command]
@@ -285,15 +298,19 @@ mod tests {
             id: 42,
             subject: "Fix sidebar".to_string(),
             status: NamedValue {
+                id: 1,
                 name: "New".to_string(),
             },
             priority: NamedValue {
+                id: 4,
                 name: "Normal".to_string(),
             },
             project: NamedValue {
+                id: 12,
                 name: "Desktop".to_string(),
             },
             tracker: NamedValue {
+                id: 2,
                 name: "Bug".to_string(),
             },
             updated_on: "2026-08-10T08:00:00Z".to_string(),
@@ -302,6 +319,7 @@ mod tests {
         let ticket = normalize_issue("https://redmine.example.com/", issue);
 
         assert_eq!(ticket.id, 42);
+        assert_eq!(ticket.project_id, 12);
         assert_eq!(ticket.url, "https://redmine.example.com/issues/42");
     }
 
@@ -322,10 +340,10 @@ mod tests {
     }
 
     #[test]
-    fn builds_active_users_url() {
+    fn builds_project_memberships_url() {
         assert_eq!(
-            active_users_url("https://redmine.example.com/"),
-            "https://redmine.example.com/users.json?status=1&limit=100"
+            project_memberships_url("https://redmine.example.com/", 12),
+            "https://redmine.example.com/projects/12/memberships.json?limit=100"
         );
     }
 }

@@ -80,7 +80,7 @@ describe("App", () => {
 
       if (command === "fetch_assignable_users") {
         return Promise.resolve([
-          { id: 7, firstname: "Max", lastname: "Mustermann", login: "max" }
+          { id: 7, name: "Max Mustermann" }
         ]);
       }
 
@@ -92,6 +92,7 @@ describe("App", () => {
             status: "Neu",
             priority: "Hoch",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/42"
@@ -111,6 +112,7 @@ describe("App", () => {
     const ticket = await screen.findByText("Login reparieren");
     fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
     fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+    await screen.findByRole("option", { name: "Max Mustermann" });
     fireEvent.change(screen.getByPlaceholderText("Kommentar"), {
       target: { value: "Bitte übernehmen." }
     });
@@ -143,6 +145,17 @@ describe("App", () => {
         },
         ticketId: 42,
         userId: 7
+      });
+      expect(invokeMock).toHaveBeenCalledWith("fetch_assignable_users", {
+        settings: {
+          baseUrl: "https://redmine.example.com",
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60,
+          language: "de"
+        },
+        projectId: 12
       });
     });
   });

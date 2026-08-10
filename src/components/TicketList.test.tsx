@@ -13,6 +13,7 @@ describe("TicketList", () => {
             status: "New",
             priority: "Normal",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/7"
@@ -36,6 +37,7 @@ describe("TicketList", () => {
             status: "New",
             priority: "High",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/8"
@@ -60,6 +62,7 @@ describe("TicketList", () => {
             status: "New",
             priority: "Sofort",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/9"
@@ -70,6 +73,7 @@ describe("TicketList", () => {
             status: "New",
             priority: "Sehr hoch",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/10"
@@ -99,6 +103,7 @@ describe("TicketList", () => {
             status: "New",
             priority: "Normal",
             project: "Desktop",
+            projectId: 12,
             tracker: "Bug",
             updatedAt: "2026-08-10T08:00:00Z",
             url: "https://redmine.example.com/issues/11"

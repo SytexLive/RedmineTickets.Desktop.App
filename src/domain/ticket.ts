@@ -4,6 +4,7 @@ export type Ticket = {
   status: string;
   priority: string;
   project: string;
+  projectId: number;
   tracker: string;
   updatedAt: string;
   url: string;

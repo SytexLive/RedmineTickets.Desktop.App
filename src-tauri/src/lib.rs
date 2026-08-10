@@ -6,6 +6,9 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 
+const TRAY_ICON_RGBA: &[u8] = include_bytes!("../icons/tray-icon.rgba");
+const TRAY_ICON_SIZE: u32 = 256;
+
 #[tauri::command]
 fn ping() -> String {
     "ok".to_string()
@@ -22,7 +25,11 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_hide, &quit])?;
 
             TrayIconBuilder::new()
-                .icon(app.default_window_icon().cloned().unwrap())
+                .icon(tauri::image::Image::new(
+                    TRAY_ICON_RGBA,
+                    TRAY_ICON_SIZE,
+                    TRAY_ICON_SIZE,
+                ))
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show_hide" => {
@@ -88,7 +95,8 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn tray_uses_default_app_icon() {
-        assert!(include_str!("lib.rs").contains(".icon(app.default_window_icon()"));
+    fn tray_uses_dedicated_icon_asset() {
+        assert!(include_str!("lib.rs").contains("include_bytes!(\"../icons/tray-icon.rgba\")"));
+        assert!(include_str!("lib.rs").contains("Image::new("));
     }
 }

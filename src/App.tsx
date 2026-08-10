@@ -22,30 +22,28 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const refreshTickets = useCallback(
-    async (nextSettings = settings) => {
-      if (!nextSettings) {
-        setViewState("settings");
-        return;
-      }
-
+  const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
+    try {
+      const loadedTickets = await fetchTickets(nextSettings);
+      setTickets(loadedTickets);
       setError(null);
-      try {
-        const loadedTickets = await fetchTickets(nextSettings);
-        setTickets(loadedTickets);
-        setViewState("tickets");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setViewState("tickets");
-      }
-    },
-    [settings]
-  );
+      setViewState("tickets");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setViewState("tickets");
+    }
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     dockWindow().catch(() => undefined);
     loadSettings()
       .then((loadedSettings) => {
+        if (cancelled) {
+          return;
+        }
+
         setSettings(loadedSettings);
         if (!loadedSettings) {
           setViewState("settings");
@@ -54,9 +52,17 @@ export function App() {
         void refreshTickets(loadedSettings);
       })
       .catch((err) => {
+        if (cancelled) {
+          return;
+        }
+
         setError(err instanceof Error ? err.message : String(err));
         setViewState("settings");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [refreshTickets]);
 
   useEffect(() => {
@@ -106,7 +112,14 @@ export function App() {
           <button
             aria-label="Refresh tickets"
             type="button"
-            onClick={() => void refreshTickets()}
+            onClick={() => {
+              if (!settings) {
+                setViewState("settings");
+                return;
+              }
+
+              void refreshTickets(settings);
+            }}
           >
             R
           </button>

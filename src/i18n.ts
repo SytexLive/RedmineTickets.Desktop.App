@@ -34,6 +34,8 @@ export type TranslationKey =
   | "sideRight"
   | "status"
   | "ticketNumber"
+  | "ticketNotifications"
+  | "ticketNotificationVolume"
   | "ticketTitle"
   | "title";
 
@@ -72,6 +74,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideRight: "Rechts",
     status: "Status",
     ticketNumber: "Ticketnummer",
+    ticketNotifications: "Ticketton aktiv",
+    ticketNotificationVolume: "Ticketton Lautstärke",
     ticketTitle: "Titel",
     title: "Redmine Tickets"
   },
@@ -109,6 +113,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sideRight: "Right",
     status: "Status",
     ticketNumber: "Ticket number",
+    ticketNotifications: "Ticket sound enabled",
+    ticketNotificationVolume: "Ticket sound volume",
     ticketTitle: "Title",
     title: "Redmine Tickets"
   }

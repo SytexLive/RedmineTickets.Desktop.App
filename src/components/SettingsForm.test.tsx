@@ -14,7 +14,9 @@ describe("SettingsForm", () => {
           monitorIndex: 1,
           dockSide: "left",
           refreshIntervalSeconds: 120,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         }}
         monitors={[
           { index: 0, label: "Monitor 1", isPrimary: false },
@@ -34,6 +36,10 @@ describe("SettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Aktualisierungsintervall"), {
       target: { value: "45" }
     });
+    fireEvent.click(screen.getByLabelText("Ticketton aktiv"));
+    fireEvent.change(screen.getByLabelText("Ticketton Lautstärke"), {
+      target: { value: "0.6" }
+    });
     fireEvent.change(screen.getByLabelText("Sprache"), {
       target: { value: "en" }
     });
@@ -45,7 +51,9 @@ describe("SettingsForm", () => {
       monitorIndex: 0,
       dockSide: "right",
       refreshIntervalSeconds: 45,
-      language: "en"
+      language: "en",
+      ticketNotificationsEnabled: false,
+      ticketNotificationVolume: 0.6
     });
   });
 });

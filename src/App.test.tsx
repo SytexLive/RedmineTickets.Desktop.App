@@ -1,8 +1,21 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 const invokeMock = vi.hoisted(() => vi.fn());
+
+function settingsFixture() {
+  return {
+    baseUrl: "https://redmine.example.com",
+    apiKey: "secret",
+    monitorIndex: 0,
+    dockSide: "right" as const,
+    refreshIntervalSeconds: 15,
+    language: "de" as const,
+    ticketNotificationsEnabled: true,
+    ticketNotificationVolume: 0.35
+  };
+}
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock
@@ -10,6 +23,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 describe("App", () => {
   afterEach(() => {
+    vi.useRealTimers();
     invokeMock.mockReset();
   });
 
@@ -30,8 +44,18 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         });
+      }
+
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+
+      if (command === "save_ticket_state") {
+        return Promise.resolve();
       }
 
       if (command === "fetch_tickets") {
@@ -70,8 +94,18 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         });
+      }
+
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+
+      if (command === "save_ticket_state") {
+        return Promise.resolve();
       }
 
       if (command === "fetch_issue_statuses") {
@@ -134,7 +168,9 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         },
         ticketId: 42,
         comment: "Bitte übernehmen."
@@ -146,7 +182,9 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         },
         ticketId: 42,
         userId: 7
@@ -158,7 +196,9 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         },
         projectId: 12
       });
@@ -182,8 +222,18 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         });
+      }
+
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+
+      if (command === "save_ticket_state") {
+        return Promise.resolve();
       }
 
       if (command === "fetch_issue_statuses") {
@@ -231,8 +281,18 @@ describe("App", () => {
           monitorIndex: 0,
           dockSide: "right",
           refreshIntervalSeconds: 60,
-          language: "de"
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35
         });
+      }
+
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+
+      if (command === "save_ticket_state") {
+        return Promise.resolve();
       }
 
       if (command === "fetch_issue_statuses") {
@@ -270,5 +330,117 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: "Im Browser öffnen" })).toBeNull();
     });
+  });
+
+  it("does not mark initial tickets unread on the first successful fetch", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([
+          {
+            id: 42,
+            subject: "Existing ticket",
+            status: "Neu",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/42"
+          }
+        ]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("button", { name: /existing ticket/i })
+    ).not.toHaveClass("ticket-row-unread");
+  });
+
+  it("marks later unseen tickets unread and saves the state", async () => {
+    vi.useFakeTimers();
+    let fetchCount = 0;
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        fetchCount += 1;
+        return Promise.resolve(
+          fetchCount === 1
+            ? [
+                {
+                  id: 42,
+                  subject: "Existing ticket",
+                  status: "Neu",
+                  priority: "Normal",
+                  project: "Desktop",
+                  projectId: 12,
+                  tracker: "Bug",
+                  updatedAt: "2026-08-10T08:00:00Z",
+                  url: "https://redmine.example.com/issues/42"
+                }
+              ]
+            : [
+                {
+                  id: 42,
+                  subject: "Existing ticket",
+                  status: "Neu",
+                  priority: "Normal",
+                  project: "Desktop",
+                  projectId: 12,
+                  tracker: "Bug",
+                  updatedAt: "2026-08-10T08:00:00Z",
+                  url: "https://redmine.example.com/issues/42"
+                },
+                {
+                  id: 43,
+                  subject: "Brand new ticket",
+                  status: "Neu",
+                  priority: "Normal",
+                  project: "Desktop",
+                  projectId: 12,
+                  tracker: "Bug",
+                  updatedAt: "2026-08-10T08:01:00Z",
+                  url: "https://redmine.example.com/issues/43"
+                }
+              ]
+        );
+      }
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Existing ticket")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(screen.getByRole("button", { name: /brand new ticket/i })).toHaveClass(
+      "ticket-row-unread"
+    );
+    expect(invokeMock).toHaveBeenCalledWith("save_ticket_state", {
+      state: { knownTicketIds: [42, 43], unreadTicketIds: [43] }
+    });
+    vi.useRealTimers();
   });
 });

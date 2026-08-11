@@ -11,11 +11,14 @@ import {
   listMonitors,
   type IssueStatus,
   loadSettings,
+  loadTicketState,
   type MonitorInfo,
   openTicketUrl,
   type RedmineUser,
   saveSettings,
+  saveTicketState,
   type RedmineSettings,
+  type TicketNotificationState,
   updateTicketStatus
 } from "./api/redmine";
 import { SettingsForm } from "./components/SettingsForm";
@@ -28,7 +31,9 @@ import {
 } from "./components/icons";
 import { buildTicketUrl } from "./domain/ticket";
 import type { Ticket } from "./domain/ticket";
+import { applyTicketRefresh, markTicketRead } from "./domain/ticketNotifications";
 import { createTranslator, formatError, type Language } from "./i18n";
+import { playTicketNotificationSound } from "./notifications/sound";
 
 type ViewState = "loading" | "settings" | "tickets";
 
@@ -41,6 +46,10 @@ type TicketContextMenu = {
 export function App() {
   const [settings, setSettings] = useState<RedmineSettings | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketState, setTicketState] = useState<TicketNotificationState>({
+    knownTicketIds: [],
+    unreadTicketIds: []
+  });
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,11 +64,31 @@ export function App() {
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const ticketStateRef = useRef<TicketNotificationState>({
+    knownTicketIds: [],
+    unreadTicketIds: []
+  });
+  const hasInitializedTicketBaselineRef = useRef(false);
 
   const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
     try {
       const loadedTickets = await fetchTickets(nextSettings);
       setTickets(loadedTickets);
+      const result = applyTicketRefresh(
+        ticketStateRef.current,
+        loadedTickets.map((ticket) => ticket.id),
+        hasInitializedTicketBaselineRef.current
+      );
+      ticketStateRef.current = result.state;
+      hasInitializedTicketBaselineRef.current = result.initialized;
+      setTicketState(result.state);
+      void saveTicketState(result.state).catch(() => undefined);
+      if (result.newTicketIds.length > 0) {
+        playTicketNotificationSound({
+          enabled: nextSettings.ticketNotificationsEnabled,
+          volume: nextSettings.ticketNotificationVolume
+        });
+      }
       setError(null);
       setViewState("tickets");
     } catch (err) {
@@ -96,12 +125,17 @@ export function App() {
     listMonitors()
       .then(setMonitors)
       .catch(() => setMonitors([]));
-    loadSettings()
-      .then((loadedSettings) => {
+    Promise.all([
+      loadSettings(),
+      loadTicketState().catch(() => ({ knownTicketIds: [], unreadTicketIds: [] }))
+    ])
+      .then(([loadedSettings, loadedTicketState]) => {
         if (cancelled) {
           return;
         }
 
+        ticketStateRef.current = loadedTicketState;
+        setTicketState(loadedTicketState);
         setSettings(loadedSettings);
         if (!loadedSettings) {
           setViewState("settings");
@@ -177,7 +211,15 @@ export function App() {
     }
   }
 
+  function markTicketAsRead(ticketId: number) {
+    const nextTicketState = markTicketRead(ticketStateRef.current, ticketId);
+    ticketStateRef.current = nextTicketState;
+    setTicketState(nextTicketState);
+    void saveTicketState(nextTicketState).catch(() => undefined);
+  }
+
   async function handleOpenTicket(ticket: Ticket) {
+    markTicketAsRead(ticket.id);
     try {
       await openTicketUrl(ticket.url);
     } catch (err) {
@@ -364,6 +406,7 @@ export function App() {
                 setTicketContextMenu({ ticket, x: position.x, y: position.y });
               }}
               tickets={tickets}
+              unreadTicketIds={ticketState.unreadTicketIds}
             />
           ) : null}
 

@@ -124,4 +124,30 @@ describe("TicketList", () => {
       { x: 20, y: 30 }
     );
   });
+
+  it("adds an unread class for unread ticket ids", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 12,
+            subject: "New assignment",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/12"
+          }
+        ]}
+        unreadTicketIds={[12]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /new assignment/i })).toHaveClass(
+      "ticket-row-unread"
+    );
+  });
 });

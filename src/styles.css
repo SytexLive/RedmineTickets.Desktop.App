@@ -294,6 +294,63 @@ textarea {
   border-color: #8796ad;
 }
 
+.ticket-row-unread {
+  border-color: #4f9ce8;
+  box-shadow: 0 0 0 1px rgb(79 156 232 / 18%), 0 8px 20px rgb(20 87 168 / 10%);
+  animation: unread-ticket-pulse 1.8s ease-in-out infinite;
+}
+
+.ticket-row-unread::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgb(255 255 255 / 0%) 35%,
+    rgb(255 255 255 / 45%) 50%,
+    rgb(255 255 255 / 0%) 65%,
+    transparent 100%
+  );
+  content: "";
+  pointer-events: none;
+  transform: translateX(-100%);
+  animation: unread-ticket-shimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes unread-ticket-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgb(79 156 232 / 18%), 0 8px 20px rgb(20 87 168 / 10%);
+  }
+
+  50% {
+    box-shadow: 0 0 0 1px rgb(79 156 232 / 34%), 0 10px 24px rgb(20 87 168 / 16%);
+  }
+}
+
+@keyframes unread-ticket-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  55%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-row-unread,
+  .ticket-row-unread::after {
+    animation: none;
+  }
+
+  .ticket-row-unread::after {
+    display: none;
+  }
+}
+
 .ticket-priority-immediate::before {
   background: #7f1d1d;
 }
@@ -363,6 +420,17 @@ textarea {
   gap: 6px;
   color: #4d5868;
   font-size: 13px;
+}
+
+.settings-form .settings-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.settings-form .settings-checkbox input {
+  width: 16px;
+  height: 16px;
 }
 
 .settings-form input {

@@ -27,6 +27,12 @@ export function SettingsForm({
     String(initialSettings?.refreshIntervalSeconds ?? 60)
   );
   const [language, setLanguage] = useState<Language>(initialSettings?.language ?? "de");
+  const [ticketNotificationsEnabled, setTicketNotificationsEnabled] = useState(
+    initialSettings?.ticketNotificationsEnabled ?? true
+  );
+  const [ticketNotificationVolume, setTicketNotificationVolume] = useState(
+    String(initialSettings?.ticketNotificationVolume ?? 0.35)
+  );
   const t = createTranslator(language);
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +43,9 @@ export function SettingsForm({
       monitorIndex: Number(monitorIndex),
       dockSide,
       refreshIntervalSeconds: Number(refreshIntervalSeconds),
-      language
+      language,
+      ticketNotificationsEnabled,
+      ticketNotificationVolume: Number(ticketNotificationVolume)
     });
   }
 
@@ -112,6 +120,26 @@ export function SettingsForm({
           <option value="de">Deutsch</option>
           <option value="en">English</option>
         </select>
+      </label>
+      <label className="settings-checkbox">
+        <input
+          checked={ticketNotificationsEnabled}
+          onChange={(event) => setTicketNotificationsEnabled(event.target.checked)}
+          type="checkbox"
+        />
+        <span>{t("ticketNotifications")}</span>
+      </label>
+      <label>
+        <span>{t("ticketNotificationVolume")}</span>
+        <input
+          aria-label={t("ticketNotificationVolume")}
+          max="1"
+          min="0"
+          onChange={(event) => setTicketNotificationVolume(event.target.value)}
+          step="0.05"
+          type="range"
+          value={ticketNotificationVolume}
+        />
       </label>
       <button className="primary-action" disabled={saving} type="submit">
         {saving ? t("saving") : t("save")}

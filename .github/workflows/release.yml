@@ -28,28 +28,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Determine release base
+        id: base
+        shell: bash
+        run: |
+          latest_tag="$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || true)"
+          if [ -n "$latest_tag" ]; then
+            echo "version=${latest_tag#v}" >> "$GITHUB_OUTPUT"
+            echo "range=${latest_tag}..HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+            echo "range=HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Determine release version
         id: version
-        uses: paulhatch/semantic-version@v5.4.0
-        with:
-          tag_prefix: "v"
-          major_pattern: '/(^|\n)BREAKING[ -]CHANGE:|^[a-z][a-z0-9-]*(\([^)]+\))?!:/'
-          minor_pattern: '/^feat(\([^)]+\))?:/'
-          version_format: "${major}.${minor}.${patch}"
-          bump_each_commit: true
-          bump_each_commit_patch_pattern: '/^fix(\([^)]+\))?:/'
-          search_commit_body: true
+        shell: bash
+        run: |
+          git log --format='%B%x1e' "${{ steps.base.outputs.range }}" > commit-messages.txt
+          node scripts/release-version.mjs "${{ steps.base.outputs.version }}" < commit-messages.txt >> "$GITHUB_OUTPUT"
 
       - name: Sync version files
-        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
+        if: steps.version.outputs.changed == 'true'
         run: npm run version:sync -- "${{ steps.version.outputs.version }}"
 
       - name: Run tests
-        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
+        if: steps.version.outputs.changed == 'true'
         run: npm test
 
       - name: Commit version files
-        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
+        if: steps.version.outputs.changed == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(release): v${{ steps.version.outputs.version }}"
@@ -57,7 +65,7 @@ jobs:
           tagging_message: "v${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
-        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
+        if: steps.version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ steps.version.outputs.version }}"

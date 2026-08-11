@@ -21,7 +21,7 @@ export function applyTicketRefresh(
   if (!initialized) {
     return {
       state: {
-        knownTicketIds: currentIds,
+        knownTicketIds: uniqueSorted([...previous.knownTicketIds, ...currentIds]),
         unreadTicketIds: uniqueSorted(
           previous.unreadTicketIds.filter((id) => currentIdSet.has(id))
         )

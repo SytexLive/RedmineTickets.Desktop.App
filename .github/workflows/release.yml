@@ -33,28 +33,31 @@ jobs:
         uses: paulhatch/semantic-version@v5.4.0
         with:
           tag_prefix: "v"
-          major_pattern: "BREAKING CHANGE"
-          minor_pattern: "^feat(\\([^)]+\\))?:"
+          major_pattern: '/(^|\n)BREAKING[ -]CHANGE:|^[a-z][a-z0-9-]*(\([^)]+\))?!:/'
+          minor_pattern: '/^feat(\([^)]+\))?:/'
           version_format: "${major}.${minor}.${patch}"
+          bump_each_commit: true
+          bump_each_commit_patch_pattern: '/^fix(\([^)]+\))?:/'
+          search_commit_body: true
 
       - name: Sync version files
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
         run: npm run version:sync -- "${{ steps.version.outputs.version }}"
 
       - name: Run tests
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
         run: npm test
 
       - name: Commit version files
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(release): v${{ steps.version.outputs.version }}"
-          file_pattern: "package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json"
+          file_pattern: "package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json"
           tagging_message: "v${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.is_tagged != 'true' && steps.version.outputs.version != steps.version.outputs.previous_version
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ steps.version.outputs.version }}"

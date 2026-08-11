@@ -25,6 +25,17 @@ describe("ticket notification state", () => {
     expect(result.newTicketIds).toEqual([]);
   });
 
+  it("preserves previously known ticket ids during the first baseline", () => {
+    const result = applyTicketRefresh(
+      { knownTicketIds: [3, 7], unreadTicketIds: [] },
+      [7, 9],
+      false
+    );
+
+    expect(result.state).toEqual({ knownTicketIds: [3, 7, 9], unreadTicketIds: [] });
+    expect(result.newTicketIds).toEqual([]);
+  });
+
   it("marks only later unseen ticket ids as new and unread", () => {
     const result = applyTicketRefresh(
       { knownTicketIds: [1, 2], unreadTicketIds: [] },

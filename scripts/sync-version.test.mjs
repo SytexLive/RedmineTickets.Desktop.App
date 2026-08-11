@@ -32,12 +32,17 @@ function createFixture() {
     path.resolve("src-tauri", "tauri.conf.json"),
     path.join(fixtureRoot, "src-tauri", "tauri.conf.json")
   );
+  fs.copyFileSync(path.resolve("package-lock.json"), path.join(fixtureRoot, "package-lock.json"));
+  fs.copyFileSync(
+    path.resolve("src-tauri", "Cargo.lock"),
+    path.join(fixtureRoot, "src-tauri", "Cargo.lock")
+  );
 
   return fixtureRoot;
 }
 
 describe("sync-version CLI", () => {
-  it("synchronizes package, Cargo, and Tauri versions", () => {
+  it("synchronizes package, lockfile, Cargo, Cargo lockfile, and Tauri versions", () => {
     const fixtureRoot = createFixture();
 
     const result = spawnSync("node", ["scripts/sync-version.mjs", "1.2.3"], {
@@ -49,9 +54,22 @@ describe("sync-version CLI", () => {
     expect(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version).toBe(
       "1.2.3"
     );
+    const packageLock = JSON.parse(
+      fs.readFileSync(path.join(fixtureRoot, "package-lock.json"), "utf8")
+    );
+    expect(packageLock.version).toBe("1.2.3");
+    expect(packageLock.packages[""].version).toBe("1.2.3");
     expect(
       fs.readFileSync(path.join(fixtureRoot, "src-tauri", "Cargo.toml"), "utf8")
     ).toContain('version = "1.2.3"');
+    const cargoLock = fs.readFileSync(
+      path.join(fixtureRoot, "src-tauri", "Cargo.lock"),
+      "utf8"
+    );
+    const rootPackage = cargoLock
+      .split("[[package]]")
+      .find((entry) => entry.includes('name = "redmine-tickets-desktop-app"'));
+    expect(rootPackage).toContain('version = "1.2.3"');
     expect(
       JSON.parse(fs.readFileSync(path.join(fixtureRoot, "src-tauri", "tauri.conf.json"), "utf8"))
         .version

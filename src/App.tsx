@@ -234,6 +234,7 @@ export function App() {
     }
 
     const ticketId = Number(quickTicketNumber.trim());
+    markTicketAsRead(ticketId);
     try {
       await openTicketUrl(buildTicketUrl(settings.baseUrl, ticketId));
       setQuickTicketNumber("");

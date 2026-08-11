@@ -293,7 +293,7 @@ describe("App", () => {
       }
 
       if (command === "load_ticket_state") {
-        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+        return Promise.resolve({ knownTicketIds: [12345], unreadTicketIds: [12345] });
       }
 
       if (command === "save_ticket_state") {
@@ -305,7 +305,7 @@ describe("App", () => {
       }
 
       if (command === "fetch_tickets") {
-        return Promise.resolve([]);
+        return Promise.resolve([ticketFixture(12345, "Quick open ticket")]);
       }
 
       if (command === "open_ticket_url") {
@@ -322,6 +322,9 @@ describe("App", () => {
     fireEvent.keyDown(ticketNumberInput, { key: "Enter" });
 
     await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("save_ticket_state", {
+        state: { knownTicketIds: [12345], unreadTicketIds: [] }
+      });
       expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
         url: "https://redmine.example.com/issues/12345"
       });

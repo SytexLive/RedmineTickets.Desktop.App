@@ -1,45 +1,54 @@
 import { describe, expect, it, vi } from "vitest";
 import { playTicketNotificationSound } from "./sound";
 
+function installAudioMock() {
+  const playMock = vi.fn(() => Promise.resolve());
+  const AudioMock = vi.fn(function AudioMock(this: HTMLAudioElement, src: string) {
+    this.src = src;
+    this.volume = 0;
+    this.play = playMock as HTMLAudioElement["play"];
+  });
+  vi.stubGlobal("Audio", AudioMock);
+
+  return { AudioMock, playMock };
+}
+
 describe("playTicketNotificationSound", () => {
   it("does nothing when disabled", () => {
-    const AudioContextMock = vi.fn();
-    vi.stubGlobal("AudioContext", AudioContextMock);
+    const AudioMock = vi.fn();
+    vi.stubGlobal("Audio", AudioMock);
 
     playTicketNotificationSound({ enabled: false, volume: 0.5 });
 
-    expect(AudioContextMock).not.toHaveBeenCalled();
+    expect(AudioMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
-  it("uses the configured volume when enabled", () => {
-    const gain = { gain: { value: 0 }, connect: vi.fn() };
-    const oscillator = {
-      frequency: { value: 0 },
-      type: "",
-      connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn()
-    };
-    const context = {
-      currentTime: 10,
-      destination: {},
-      createGain: vi.fn(() => gain),
-      createOscillator: vi.fn(() => oscillator),
-      close: vi.fn()
-    };
-    vi.stubGlobal(
-      "AudioContext",
-      vi.fn(function AudioContextMock() {
-        return context;
-      })
-    );
+  it("uses the configured volume and selected sound when enabled", () => {
+    const { AudioMock, playMock } = installAudioMock();
 
-    playTicketNotificationSound({ enabled: true, volume: 0.25 });
+    playTicketNotificationSound({
+      enabled: true,
+      volume: 0.25,
+      sound: "ring.mp3"
+    });
 
-    expect(gain.gain.value).toBe(0.25);
-    expect(oscillator.start).toHaveBeenCalledWith(10);
-    expect(oscillator.stop).toHaveBeenCalledWith(10.18);
+    expect(AudioMock).toHaveBeenCalledWith(expect.stringContaining("ring.mp3"));
+    expect(AudioMock.mock.instances[0].volume).toBe(0.25);
+    expect(playMock).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to the default sound for an unknown sound", () => {
+    const { AudioMock } = installAudioMock();
+
+    playTicketNotificationSound({
+      enabled: true,
+      volume: 0.25,
+      sound: "missing.mp3"
+    });
+
+    expect(AudioMock).toHaveBeenCalledWith(expect.stringContaining("default.mp3"));
     vi.unstubAllGlobals();
   });
 
@@ -47,37 +56,18 @@ describe("playTicketNotificationSound", () => {
     { volume: -0.25, expected: 0 },
     { volume: 1.25, expected: 1 }
   ])("clamps volume $volume to $expected", ({ volume, expected }) => {
-    const gain = { gain: { value: 0 }, connect: vi.fn() };
-    const oscillator = {
-      frequency: { value: 0 },
-      type: "",
-      connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn()
-    };
-    vi.stubGlobal(
-      "AudioContext",
-      vi.fn(function AudioContextMock() {
-        return {
-          currentTime: 0,
-          destination: {},
-          createGain: vi.fn(() => gain),
-          createOscillator: vi.fn(() => oscillator),
-          close: vi.fn()
-        };
-      })
-    );
+    const { AudioMock } = installAudioMock();
 
     playTicketNotificationSound({ enabled: true, volume });
 
-    expect(gain.gain.value).toBe(expected);
+    expect(AudioMock.mock.instances[0].volume).toBe(expected);
     vi.unstubAllGlobals();
   });
 
   it("does not throw when audio initialization fails", () => {
     vi.stubGlobal(
-      "AudioContext",
-      vi.fn(function AudioContextMock() {
+      "Audio",
+      vi.fn(function AudioMock() {
         throw new Error("Audio is unavailable");
       })
     );

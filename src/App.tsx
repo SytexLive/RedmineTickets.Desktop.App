@@ -86,7 +86,8 @@ export function App() {
       if (result.newTicketIds.length > 0) {
         playTicketNotificationSound({
           enabled: nextSettings.ticketNotificationsEnabled,
-          volume: nextSettings.ticketNotificationVolume
+          volume: nextSettings.ticketNotificationVolume,
+          sound: nextSettings.ticketNotificationSound
         });
       }
       setError(null);

@@ -16,6 +16,21 @@ pub fn default_ticket_notification_volume() -> f64 {
     0.35
 }
 
+pub fn default_ticket_notification_sound() -> String {
+    "default.mp3".to_string()
+}
+
+const TICKET_NOTIFICATION_SOUNDS: [&str; 8] = [
+    "alert.mp3",
+    "amongus.mp3",
+    "default.mp3",
+    "drage.mp3",
+    "pacman.mp3",
+    "phoning.mp3",
+    "ring.mp3",
+    "swiggle.mp3",
+];
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Language {
@@ -77,6 +92,8 @@ pub struct RedmineSettings {
     pub ticket_notifications_enabled: bool,
     #[serde(default = "default_ticket_notification_volume")]
     pub ticket_notification_volume: f64,
+    #[serde(default = "default_ticket_notification_sound")]
+    pub ticket_notification_sound: String,
 }
 
 impl RedmineSettings {
@@ -102,6 +119,10 @@ impl RedmineSettings {
 
         if !(0.0..=1.0).contains(&self.ticket_notification_volume) {
             return Err("Ticket notification volume must be between 0 and 1".to_string());
+        }
+
+        if !TICKET_NOTIFICATION_SOUNDS.contains(&self.ticket_notification_sound.as_str()) {
+            return Err("Invalid ticket notification sound".to_string());
         }
 
         Ok(())
@@ -154,6 +175,7 @@ mod tests {
             language: Language::De,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: default_ticket_notification_sound(),
         };
 
         assert_eq!(settings.validate().unwrap_err(), "Missing API key");
@@ -170,6 +192,7 @@ mod tests {
             language: Language::De,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: default_ticket_notification_sound(),
         };
 
         assert_eq!(
@@ -188,6 +211,7 @@ mod tests {
         assert_eq!(settings.dock_side, DockSide::Right);
         assert_eq!(settings.refresh_interval_seconds, 60);
         assert_eq!(settings.language, Language::De);
+        assert_eq!(settings.ticket_notification_sound, "default.mp3");
     }
 
     #[test]
@@ -198,6 +222,7 @@ mod tests {
 
         assert_eq!(settings.ticket_notifications_enabled, true);
         assert_eq!(settings.ticket_notification_volume, 0.35);
+        assert_eq!(settings.ticket_notification_sound, "default.mp3");
     }
 
     #[test]
@@ -211,6 +236,7 @@ mod tests {
             language: Language::De,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: default_ticket_notification_sound(),
         };
 
         assert_eq!(
@@ -230,6 +256,7 @@ mod tests {
             language: Language::De,
             ticket_notifications_enabled: true,
             ticket_notification_volume: -0.1,
+            ticket_notification_sound: default_ticket_notification_sound(),
         };
 
         assert_eq!(
@@ -249,11 +276,49 @@ mod tests {
             language: Language::De,
             ticket_notifications_enabled: true,
             ticket_notification_volume: 1.1,
+            ticket_notification_sound: default_ticket_notification_sound(),
         };
 
         assert_eq!(
             settings.validate().unwrap_err(),
             "Ticket notification volume must be between 0 and 1"
+        );
+    }
+
+    #[test]
+    fn accepts_valid_notification_sound() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: "ring.mp3".to_string(),
+        };
+
+        assert!(settings.validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_notification_sound() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: "missing.mp3".to_string(),
+        };
+
+        assert_eq!(
+            settings.validate().unwrap_err(),
+            "Invalid ticket notification sound"
         );
     }
 }

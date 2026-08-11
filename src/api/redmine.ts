@@ -10,6 +10,7 @@ export type RedmineSettings = {
   language: "de" | "en";
   ticketNotificationsEnabled: boolean;
   ticketNotificationVolume: number;
+  ticketNotificationSound: string;
 };
 
 export type TicketNotificationState = {

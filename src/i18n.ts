@@ -36,6 +36,7 @@ export type TranslationKey =
   | "ticketNumber"
   | "ticketNotifications"
   | "ticketNotificationVolume"
+  | "ticketNotificationSound"
   | "ticketTitle"
   | "title";
 
@@ -76,6 +77,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNumber: "Ticketnummer",
     ticketNotifications: "Ticketton aktiv",
     ticketNotificationVolume: "Ticketton Lautstärke",
+    ticketNotificationSound: "Ticketton",
     ticketTitle: "Titel",
     title: "Redmine Tickets"
   },
@@ -115,6 +117,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNumber: "Ticket number",
     ticketNotifications: "Ticket sound enabled",
     ticketNotificationVolume: "Ticket sound volume",
+    ticketNotificationSound: "Ticket sound",
     ticketTitle: "Title",
     title: "Redmine Tickets"
   }
@@ -142,6 +145,7 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Could not show panel": "Panel konnte nicht angezeigt werden",
     "Could not size panel": "Panel-Gro\u00dfe konnte nicht gesetzt werden",
     "Invalid Redmine URL": "Ung\u00fcltige Redmine URL",
+    "Invalid ticket notification sound": "Ung\u00fcltiger Ticketton",
     "Invalid ticket URL": "Ung\u00fcltige Ticket-URL",
     "Missing API key": "API-Schl\u00fcssel fehlt",
     "Missing Redmine URL": "Redmine URL fehlt",

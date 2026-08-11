@@ -1,6 +1,10 @@
 import { FormEvent, useState } from "react";
 import type { MonitorInfo, RedmineSettings } from "../api/redmine";
 import { createTranslator, type Language } from "../i18n";
+import {
+  DEFAULT_TICKET_NOTIFICATION_SOUND,
+  TICKET_NOTIFICATION_SOUNDS
+} from "../notifications/soundOptions";
 
 type SettingsFormProps = {
   initialSettings: RedmineSettings | null;
@@ -33,6 +37,9 @@ export function SettingsForm({
   const [ticketNotificationVolume, setTicketNotificationVolume] = useState(
     String(initialSettings?.ticketNotificationVolume ?? 0.35)
   );
+  const [ticketNotificationSound, setTicketNotificationSound] = useState(
+    initialSettings?.ticketNotificationSound ?? DEFAULT_TICKET_NOTIFICATION_SOUND
+  );
   const t = createTranslator(language);
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -45,7 +52,8 @@ export function SettingsForm({
       refreshIntervalSeconds: Number(refreshIntervalSeconds),
       language,
       ticketNotificationsEnabled,
-      ticketNotificationVolume: Number(ticketNotificationVolume)
+      ticketNotificationVolume: Number(ticketNotificationVolume),
+      ticketNotificationSound
     });
   }
 
@@ -128,6 +136,20 @@ export function SettingsForm({
           type="checkbox"
         />
         <span>{t("ticketNotifications")}</span>
+      </label>
+      <label>
+        <span>{t("ticketNotificationSound")}</span>
+        <select
+          aria-label={t("ticketNotificationSound")}
+          onChange={(event) => setTicketNotificationSound(event.target.value)}
+          value={ticketNotificationSound}
+        >
+          {TICKET_NOTIFICATION_SOUNDS.map((sound) => (
+            <option key={sound.filename} value={sound.filename}>
+              {sound.label}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         <span>{t("ticketNotificationVolume")}</span>

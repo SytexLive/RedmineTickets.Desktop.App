@@ -16,7 +16,8 @@ describe("SettingsForm", () => {
           refreshIntervalSeconds: 120,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         }}
         monitors={[
           { index: 0, label: "Monitor 1", isPrimary: false },
@@ -40,6 +41,9 @@ describe("SettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Ticketton Lautstärke"), {
       target: { value: "0.6" }
     });
+    fireEvent.change(screen.getByLabelText("Ticketton"), {
+      target: { value: "ring.mp3" }
+    });
     fireEvent.change(screen.getByLabelText("Sprache"), {
       target: { value: "en" }
     });
@@ -53,7 +57,8 @@ describe("SettingsForm", () => {
       refreshIntervalSeconds: 45,
       language: "en",
       ticketNotificationsEnabled: false,
-      ticketNotificationVolume: 0.6
+      ticketNotificationVolume: 0.6,
+      ticketNotificationSound: "ring.mp3"
     });
   });
 });

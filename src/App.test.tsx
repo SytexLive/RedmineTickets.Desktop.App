@@ -13,7 +13,8 @@ function settingsFixture() {
     refreshIntervalSeconds: 15,
     language: "de" as const,
     ticketNotificationsEnabled: true,
-    ticketNotificationVolume: 0.35
+    ticketNotificationVolume: 0.35,
+    ticketNotificationSound: "default.mp3"
   };
 }
 
@@ -31,26 +32,12 @@ function ticketFixture(id: number, subject: string) {
   };
 }
 
-function installAudioContextMock() {
-  const constructorMock = vi.fn(function AudioContextMock() {
-    return {
-      currentTime: 0,
-      destination: {},
-      createOscillator: () => ({
-        type: "sine",
-        frequency: { value: 0 },
-        connect: vi.fn(),
-        start: vi.fn(),
-        stop: vi.fn()
-      }),
-      createGain: () => ({
-        gain: { value: 0 },
-        connect: vi.fn()
-      }),
-      close: vi.fn(() => Promise.resolve())
-    };
+function installAudioMock() {
+  const constructorMock = vi.fn(function AudioMock(this: HTMLAudioElement) {
+    this.play = vi.fn(() => Promise.resolve()) as HTMLAudioElement["play"];
+    return this;
   });
-  vi.stubGlobal("AudioContext", constructorMock);
+  vi.stubGlobal("Audio", constructorMock);
   return constructorMock;
 }
 
@@ -110,7 +97,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         });
       }
 
@@ -160,7 +148,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         });
       }
 
@@ -234,7 +223,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         },
         ticketId: 42,
         comment: "Bitte übernehmen."
@@ -248,7 +238,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         },
         ticketId: 42,
         userId: 7
@@ -262,7 +253,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         },
         projectId: 12
       });
@@ -288,7 +280,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         });
       }
 
@@ -350,7 +343,8 @@ describe("App", () => {
           refreshIntervalSeconds: 60,
           language: "de",
           ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
         });
       }
 
@@ -400,7 +394,7 @@ describe("App", () => {
   });
 
   it("does not mark initial tickets unread on the first successful fetch", async () => {
-    const audioContextMock = installAudioContextMock();
+    const audioMock = installAudioMock();
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();
       if (command === "list_monitors") return Promise.resolve([]);
@@ -433,11 +427,12 @@ describe("App", () => {
     expect(
       await screen.findByRole("button", { name: /existing ticket/i })
     ).not.toHaveClass("ticket-row-unread");
-    expect(audioContextMock).not.toHaveBeenCalled();
+    expect(audioMock).not.toHaveBeenCalled();
   });
 
   it("marks later unseen tickets unread and saves the state", async () => {
     vi.useFakeTimers();
+    installAudioMock();
     let fetchCount = 0;
     invokeMock.mockImplementation((command: string, args?: unknown) => {
       if (command === "dock_window") return Promise.resolve();
@@ -515,7 +510,7 @@ describe("App", () => {
 
   it("plays one sound when one refresh contains multiple new tickets", async () => {
     vi.useFakeTimers();
-    const audioContextMock = installAudioContextMock();
+    const audioMock = installAudioMock();
     mockTicketApp({
       ticketBatches: [
         [ticketFixture(42, "Existing ticket")],
@@ -542,12 +537,12 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /second new ticket/i })).toHaveClass(
       "ticket-row-unread"
     );
-    expect(audioContextMock).toHaveBeenCalledTimes(1);
+    expect(audioMock).toHaveBeenCalledTimes(1);
   });
 
   it("keeps new tickets unread without sound when ticket sound is disabled", async () => {
     vi.useFakeTimers();
-    const audioContextMock = installAudioContextMock();
+    const audioMock = installAudioMock();
     mockTicketApp({
       settings: {
         ...settingsFixture(),
@@ -574,7 +569,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /silent new ticket/i })).toHaveClass(
       "ticket-row-unread"
     );
-    expect(audioContextMock).not.toHaveBeenCalled();
+    expect(audioMock).not.toHaveBeenCalled();
   });
 
   it("persists a ticket as read when it is opened directly", async () => {

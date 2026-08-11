@@ -78,6 +78,14 @@ Build the desktop package:
 npm run tauri build
 ```
 
+## Branching
+
+- `main` is the stable default branch for the project.
+- Use short-lived working branches for concrete changes.
+- Use `feature/...` for feature work.
+- Use `codex/...` for Codex-driven implementation branches.
+- Do not use a feature or task branch as the repository default branch.
+
 ## Configuration
 
 On first launch, open the settings view and enter:

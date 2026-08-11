@@ -60,7 +60,7 @@ impl Default for PanelSettings {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RedmineSettings {
     pub base_url: String,

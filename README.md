@@ -78,6 +78,16 @@ Build the desktop package:
 npm run tauri build
 ```
 
+Build the Windows NSIS setup installer:
+
+```bash
+npm run tauri build -- --bundles nsis
+```
+
+When providing a Windows release build, include both the built application EXE
+and a Windows installer, preferably the NSIS `*-setup.exe` generated under
+`src-tauri/target/release/bundle/nsis/`.
+
 ## Branching
 
 - `main` is the stable default branch for the project.

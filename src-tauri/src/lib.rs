@@ -1,5 +1,6 @@
 mod redmine;
 mod settings;
+mod ticket_state;
 mod window;
 
 use tauri::menu::{Menu, MenuItem};
@@ -82,6 +83,8 @@ pub fn run() {
             redmine::update_ticket_status,
             settings::load_settings,
             settings::save_settings,
+            ticket_state::load_ticket_state,
+            ticket_state::save_ticket_state,
             window::list_monitors,
             window::dock_window,
             window::collapse_window,

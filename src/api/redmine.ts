@@ -8,6 +8,13 @@ export type RedmineSettings = {
   dockSide: "left" | "right";
   refreshIntervalSeconds: number;
   language: "de" | "en";
+  ticketNotificationsEnabled: boolean;
+  ticketNotificationVolume: number;
+};
+
+export type TicketNotificationState = {
+  knownTicketIds: number[];
+  unreadTicketIds: number[];
 };
 
 export type MonitorInfo = {
@@ -45,6 +52,14 @@ export function loadSettings(): Promise<RedmineSettings | null> {
 
 export function saveSettings(settings: RedmineSettings): Promise<void> {
   return invoke("save_settings", { settings });
+}
+
+export function loadTicketState(): Promise<TicketNotificationState> {
+  return invoke("load_ticket_state");
+}
+
+export function saveTicketState(state: TicketNotificationState): Promise<void> {
+  return invoke("save_ticket_state", { state });
 }
 
 export function fetchTickets(settings: RedmineSettings): Promise<Ticket[]> {

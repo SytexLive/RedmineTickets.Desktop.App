@@ -8,6 +8,14 @@ pub fn default_refresh_interval_seconds() -> u64 {
     60
 }
 
+pub fn default_ticket_notifications_enabled() -> bool {
+    true
+}
+
+pub fn default_ticket_notification_volume() -> f64 {
+    0.35
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Language {
@@ -65,6 +73,10 @@ pub struct RedmineSettings {
     pub refresh_interval_seconds: u64,
     #[serde(default)]
     pub language: Language,
+    #[serde(default = "default_ticket_notifications_enabled")]
+    pub ticket_notifications_enabled: bool,
+    #[serde(default = "default_ticket_notification_volume")]
+    pub ticket_notification_volume: f64,
 }
 
 impl RedmineSettings {
@@ -86,6 +98,10 @@ impl RedmineSettings {
 
         if self.refresh_interval_seconds < 15 {
             return Err("Refresh interval must be at least 15 seconds".to_string());
+        }
+
+        if !(0.0..=1.0).contains(&self.ticket_notification_volume) {
+            return Err("Ticket notification volume must be between 0 and 1".to_string());
         }
 
         Ok(())
@@ -136,6 +152,8 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
         };
 
         assert_eq!(settings.validate().unwrap_err(), "Missing API key");
@@ -150,6 +168,8 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
         };
 
         assert_eq!(
@@ -171,6 +191,16 @@ mod tests {
     }
 
     #[test]
+    fn applies_default_notification_settings_for_legacy_config() {
+        let settings: RedmineSettings =
+            serde_json::from_str(r#"{"baseUrl":"https://redmine.example.com","apiKey":"secret"}"#)
+                .unwrap();
+
+        assert_eq!(settings.ticket_notifications_enabled, true);
+        assert_eq!(settings.ticket_notification_volume, 0.35);
+    }
+
+    #[test]
     fn rejects_refresh_interval_below_minimum() {
         let settings = RedmineSettings {
             base_url: "https://redmine.example.com".to_string(),
@@ -179,11 +209,51 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: 5,
             language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
         };
 
         assert_eq!(
             settings.validate().unwrap_err(),
             "Refresh interval must be at least 15 seconds"
+        );
+    }
+
+    #[test]
+    fn rejects_notification_volume_below_zero() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: -0.1,
+        };
+
+        assert_eq!(
+            settings.validate().unwrap_err(),
+            "Ticket notification volume must be between 0 and 1"
+        );
+    }
+
+    #[test]
+    fn rejects_notification_volume_above_one() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: 1.1,
+        };
+
+        assert_eq!(
+            settings.validate().unwrap_err(),
+            "Ticket notification volume must be between 0 and 1"
         );
     }
 }

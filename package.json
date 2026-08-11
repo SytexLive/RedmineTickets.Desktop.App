@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "version:sync": "node scripts/sync-version.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

@@ -17,6 +17,69 @@ function settingsFixture() {
   };
 }
 
+function ticketFixture(id: number, subject: string) {
+  return {
+    id,
+    subject,
+    status: "Neu",
+    priority: "Normal",
+    project: "Desktop",
+    projectId: 12,
+    tracker: "Bug",
+    updatedAt: "2026-08-10T08:00:00Z",
+    url: `https://redmine.example.com/issues/${id}`
+  };
+}
+
+function installAudioContextMock() {
+  const constructorMock = vi.fn(function AudioContextMock() {
+    return {
+      currentTime: 0,
+      destination: {},
+      createOscillator: () => ({
+        type: "sine",
+        frequency: { value: 0 },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn()
+      }),
+      createGain: () => ({
+        gain: { value: 0 },
+        connect: vi.fn()
+      }),
+      close: vi.fn(() => Promise.resolve())
+    };
+  });
+  vi.stubGlobal("AudioContext", constructorMock);
+  return constructorMock;
+}
+
+function mockTicketApp({
+  settings = settingsFixture(),
+  ticketState = { knownTicketIds: [], unreadTicketIds: [] },
+  ticketBatches
+}: {
+  settings?: ReturnType<typeof settingsFixture>;
+  ticketState?: { knownTicketIds: number[]; unreadTicketIds: number[] };
+  ticketBatches: ReturnType<typeof ticketFixture>[][];
+}) {
+  let fetchCount = 0;
+  invokeMock.mockImplementation((command: string, args?: unknown) => {
+    if (command === "dock_window") return Promise.resolve();
+    if (command === "list_monitors") return Promise.resolve([]);
+    if (command === "load_ticket_state") return Promise.resolve(ticketState);
+    if (command === "save_ticket_state") return Promise.resolve();
+    if (command === "load_settings") return Promise.resolve(settings);
+    if (command === "fetch_issue_statuses") return Promise.resolve([]);
+    if (command === "fetch_tickets") {
+      const batch = ticketBatches[Math.min(fetchCount, ticketBatches.length - 1)];
+      fetchCount += 1;
+      return Promise.resolve(batch);
+    }
+    return Promise.resolve(args);
+  });
+}
+
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock
 }));
@@ -24,6 +87,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 describe("App", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     invokeMock.mockReset();
   });
 
@@ -333,6 +397,7 @@ describe("App", () => {
   });
 
   it("does not mark initial tickets unread on the first successful fetch", async () => {
+    const audioContextMock = installAudioContextMock();
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();
       if (command === "list_monitors") return Promise.resolve([]);
@@ -365,6 +430,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("button", { name: /existing ticket/i })
     ).not.toHaveClass("ticket-row-unread");
+    expect(audioContextMock).not.toHaveBeenCalled();
   });
 
   it("marks later unseen tickets unread and saves the state", async () => {
@@ -442,5 +508,117 @@ describe("App", () => {
       state: { knownTicketIds: [42, 43], unreadTicketIds: [43] }
     });
     vi.useRealTimers();
+  });
+
+  it("plays one sound when one refresh contains multiple new tickets", async () => {
+    vi.useFakeTimers();
+    const audioContextMock = installAudioContextMock();
+    mockTicketApp({
+      ticketBatches: [
+        [ticketFixture(42, "Existing ticket")],
+        [
+          ticketFixture(42, "Existing ticket"),
+          ticketFixture(43, "First new ticket"),
+          ticketFixture(44, "Second new ticket")
+        ]
+      ]
+    });
+
+    render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(screen.getByRole("button", { name: /first new ticket/i })).toHaveClass(
+      "ticket-row-unread"
+    );
+    expect(screen.getByRole("button", { name: /second new ticket/i })).toHaveClass(
+      "ticket-row-unread"
+    );
+    expect(audioContextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps new tickets unread without sound when ticket sound is disabled", async () => {
+    vi.useFakeTimers();
+    const audioContextMock = installAudioContextMock();
+    mockTicketApp({
+      settings: {
+        ...settingsFixture(),
+        ticketNotificationsEnabled: false
+      },
+      ticketBatches: [
+        [ticketFixture(42, "Existing ticket")],
+        [
+          ticketFixture(42, "Existing ticket"),
+          ticketFixture(43, "Silent new ticket")
+        ]
+      ]
+    });
+
+    render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(screen.getByRole("button", { name: /silent new ticket/i })).toHaveClass(
+      "ticket-row-unread"
+    );
+    expect(audioContextMock).not.toHaveBeenCalled();
+  });
+
+  it("persists a ticket as read when it is opened directly", async () => {
+    const ticket = ticketFixture(42, "Direct open ticket");
+    mockTicketApp({
+      ticketState: { knownTicketIds: [42], unreadTicketIds: [42] },
+      ticketBatches: [[ticket]]
+    });
+
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /direct open ticket/i })
+    );
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("save_ticket_state", {
+        state: { knownTicketIds: [42], unreadTicketIds: [] }
+      });
+      expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+        url: ticket.url
+      });
+    });
+  });
+
+  it("persists a ticket as read when it is opened from the context menu", async () => {
+    const ticket = ticketFixture(42, "Context open ticket");
+    mockTicketApp({
+      ticketState: { knownTicketIds: [42], unreadTicketIds: [42] },
+      ticketBatches: [[ticket]]
+    });
+
+    render(<App />);
+
+    fireEvent.contextMenu(
+      await screen.findByRole("button", { name: /context open ticket/i }),
+      { clientX: 20, clientY: 20 }
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Im Browser öffnen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("save_ticket_state", {
+        state: { knownTicketIds: [42], unreadTicketIds: [] }
+      });
+      expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+        url: ticket.url
+      });
+    });
   });
 });

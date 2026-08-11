@@ -10,7 +10,7 @@ if (!/^\d+\.\d+\.\d+$/.test(nextVersion ?? "")) {
 function writeJsonVersion(path) {
   const content = JSON.parse(fs.readFileSync(path, "utf8"));
   content.version = nextVersion;
-  fs.writeFileSync(`${path}`, `${JSON.stringify(content, null, 2)}\n`);
+  fs.writeFileSync(path, `${JSON.stringify(content, null, 2)}\n`);
 }
 
 function writeCargoVersion(path) {

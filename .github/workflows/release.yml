@@ -34,7 +34,7 @@ jobs:
         with:
           tag_prefix: "v"
           major_pattern: "BREAKING CHANGE"
-          minor_pattern: "feat:"
+          minor_pattern: "^feat(\\([^)]+\\))?:"
           version_format: "${major}.${minor}.${patch}"
 
       - name: Sync version files

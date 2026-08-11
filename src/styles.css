@@ -451,6 +451,12 @@ textarea {
   padding: 8px 10px;
 }
 
+.settings-inline-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .primary-action {
   height: 38px;
   border: 0;
@@ -459,6 +465,17 @@ textarea {
   color: #ffffff;
   cursor: pointer;
   font-weight: 700;
+}
+
+.secondary-action {
+  min-width: 64px;
+  height: 38px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1b1f24;
+  cursor: pointer;
+  font-weight: 650;
 }
 
 .status-panel,

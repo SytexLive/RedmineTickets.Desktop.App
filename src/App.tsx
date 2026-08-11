@@ -393,6 +393,9 @@ export function App() {
               initialSettings={settings}
               monitors={monitors}
               onSave={handleSave}
+              onPreviewTicketNotificationSound={(sound, volume) =>
+                playTicketNotificationSound({ enabled: true, volume, sound })
+              }
               saving={saving}
             />
           ) : null}

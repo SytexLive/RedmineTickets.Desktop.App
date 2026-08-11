@@ -5,6 +5,7 @@ import { SettingsForm } from "./SettingsForm";
 describe("SettingsForm", () => {
   it("saves monitor, dock side, and refresh interval settings", () => {
     const onSave = vi.fn();
+    const onPreviewTicketNotificationSound = vi.fn();
 
     render(
       <SettingsForm
@@ -25,6 +26,7 @@ describe("SettingsForm", () => {
         ]}
         saving={false}
         onSave={onSave}
+        onPreviewTicketNotificationSound={onPreviewTicketNotificationSound}
       />
     );
 
@@ -44,6 +46,7 @@ describe("SettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Ticketton"), {
       target: { value: "ring.mp3" }
     });
+    fireEvent.click(screen.getByRole("button", { name: "Ticketton testen" }));
     fireEvent.change(screen.getByLabelText("Sprache"), {
       target: { value: "en" }
     });
@@ -60,5 +63,6 @@ describe("SettingsForm", () => {
       ticketNotificationVolume: 0.6,
       ticketNotificationSound: "ring.mp3"
     });
+    expect(onPreviewTicketNotificationSound).toHaveBeenCalledWith("ring.mp3", 0.6);
   });
 });

@@ -33,12 +33,15 @@ function ticketFixture(id: number, subject: string) {
 }
 
 function installAudioMock() {
-  const constructorMock = vi.fn(function AudioMock(this: HTMLAudioElement) {
-    this.play = vi.fn(() => Promise.resolve()) as HTMLAudioElement["play"];
+  const playMock = vi.fn(() => Promise.resolve());
+  const constructorMock = vi.fn(function AudioMock(this: HTMLAudioElement, src: string) {
+    this.src = src;
+    this.volume = 0;
+    this.play = playMock as HTMLAudioElement["play"];
     return this;
   });
   vi.stubGlobal("Audio", constructorMock);
-  return constructorMock;
+  return { constructorMock, playMock };
 }
 
 function mockTicketApp({
@@ -394,7 +397,7 @@ describe("App", () => {
   });
 
   it("does not mark initial tickets unread on the first successful fetch", async () => {
-    const audioMock = installAudioMock();
+    const { constructorMock: audioMock } = installAudioMock();
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();
       if (command === "list_monitors") return Promise.resolve([]);
@@ -510,7 +513,7 @@ describe("App", () => {
 
   it("plays one sound when one refresh contains multiple new tickets", async () => {
     vi.useFakeTimers();
-    const audioMock = installAudioMock();
+    const { constructorMock: audioMock } = installAudioMock();
     mockTicketApp({
       ticketBatches: [
         [ticketFixture(42, "Existing ticket")],
@@ -542,7 +545,7 @@ describe("App", () => {
 
   it("keeps new tickets unread without sound when ticket sound is disabled", async () => {
     vi.useFakeTimers();
-    const audioMock = installAudioMock();
+    const { constructorMock: audioMock } = installAudioMock();
     mockTicketApp({
       settings: {
         ...settingsFixture(),
@@ -570,6 +573,32 @@ describe("App", () => {
       "ticket-row-unread"
     );
     expect(audioMock).not.toHaveBeenCalled();
+  });
+
+  it("previews the selected ticket notification sound from settings", async () => {
+    const { constructorMock: audioMock, playMock } = installAudioMock();
+    mockTicketApp({
+      settings: {
+        ...settingsFixture(),
+        ticketNotificationsEnabled: false
+      },
+      ticketBatches: [[ticketFixture(42, "Existing ticket")]]
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Einstellungen anzeigen" }));
+    fireEvent.change(await screen.findByLabelText("Ticketton"), {
+      target: { value: "ring.mp3" }
+    });
+    fireEvent.change(screen.getByLabelText("Ticketton Lautstärke"), {
+      target: { value: "0.6" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ticketton testen" }));
+
+    expect(audioMock).toHaveBeenCalledWith(expect.stringContaining("ring.mp3"));
+    expect(audioMock.mock.instances[0].volume).toBe(0.6);
+    expect(playMock).toHaveBeenCalled();
   });
 
   it("persists a ticket as read when it is opened directly", async () => {

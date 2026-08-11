@@ -11,13 +11,15 @@ type SettingsFormProps = {
   monitors: MonitorInfo[];
   saving: boolean;
   onSave: (settings: RedmineSettings) => void;
+  onPreviewTicketNotificationSound?: (sound: string, volume: number) => void;
 };
 
 export function SettingsForm({
   initialSettings,
   monitors,
   saving,
-  onSave
+  onSave,
+  onPreviewTicketNotificationSound
 }: SettingsFormProps) {
   const [baseUrl, setBaseUrl] = useState(initialSettings?.baseUrl ?? "");
   const [apiKey, setApiKey] = useState(initialSettings?.apiKey ?? "");
@@ -55,6 +57,13 @@ export function SettingsForm({
       ticketNotificationVolume: Number(ticketNotificationVolume),
       ticketNotificationSound
     });
+  }
+
+  function previewTicketNotificationSound() {
+    onPreviewTicketNotificationSound?.(
+      ticketNotificationSound,
+      Number(ticketNotificationVolume)
+    );
   }
 
   return (
@@ -139,17 +148,27 @@ export function SettingsForm({
       </label>
       <label>
         <span>{t("ticketNotificationSound")}</span>
-        <select
-          aria-label={t("ticketNotificationSound")}
-          onChange={(event) => setTicketNotificationSound(event.target.value)}
-          value={ticketNotificationSound}
-        >
-          {TICKET_NOTIFICATION_SOUNDS.map((sound) => (
-            <option key={sound.filename} value={sound.filename}>
-              {sound.label}
-            </option>
-          ))}
-        </select>
+        <div className="settings-inline-control">
+          <select
+            aria-label={t("ticketNotificationSound")}
+            onChange={(event) => setTicketNotificationSound(event.target.value)}
+            value={ticketNotificationSound}
+          >
+            {TICKET_NOTIFICATION_SOUNDS.map((sound) => (
+              <option key={sound.filename} value={sound.filename}>
+                {sound.label}
+              </option>
+            ))}
+          </select>
+          <button
+            aria-label={t("testTicketNotificationSound")}
+            className="secondary-action"
+            onClick={previewTicketNotificationSound}
+            type="button"
+          >
+            {t("test")}
+          </button>
+        </div>
       </label>
       <label>
         <span>{t("ticketNotificationVolume")}</span>

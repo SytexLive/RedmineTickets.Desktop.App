@@ -32,6 +32,12 @@ export type TranslationKey =
   | "side"
   | "sideLeft"
   | "sideRight"
+  | "sortBy"
+  | "sortCreatedDesc"
+  | "sortIdAsc"
+  | "sortIdDesc"
+  | "sortPriorityDesc"
+  | "sortUpdatedDesc"
   | "status"
   | "test"
   | "testTicketNotificationSound"
@@ -75,6 +81,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     side: "Seite",
     sideLeft: "Links",
     sideRight: "Rechts",
+    sortBy: "Sortieren",
+    sortCreatedDesc: "Anlagedatum: neueste zuerst",
+    sortIdAsc: "Ticketnummer aufsteigend",
+    sortIdDesc: "Ticketnummer absteigend",
+    sortPriorityDesc: "Priorit\u00e4t: h\u00f6chste zuerst",
+    sortUpdatedDesc: "\u00c4nderungsdatum: neueste zuerst",
     status: "Status",
     test: "Test",
     testTicketNotificationSound: "Ticketton testen",
@@ -117,6 +129,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     side: "Side",
     sideLeft: "Left",
     sideRight: "Right",
+    sortBy: "Sort by",
+    sortCreatedDesc: "Created newest",
+    sortIdAsc: "Ticket number ascending",
+    sortIdDesc: "Ticket number descending",
+    sortPriorityDesc: "Priority highest",
+    sortUpdatedDesc: "Updated newest",
     status: "Status",
     test: "Test",
     testTicketNotificationSound: "Test ticket sound",

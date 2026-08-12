@@ -6,6 +6,7 @@ export type Ticket = {
   project: string;
   projectId: number;
   tracker: string;
+  createdAt?: string;
   updatedAt: string;
   url: string;
 };

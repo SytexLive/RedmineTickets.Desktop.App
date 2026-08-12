@@ -12,6 +12,7 @@ pub struct Ticket {
     pub project: String,
     pub project_id: u64,
     pub tracker: String,
+    pub created_at: String,
     pub updated_at: String,
     pub url: String,
 }
@@ -30,6 +31,7 @@ pub struct RedmineIssue {
     pub priority: NamedValue,
     pub project: NamedValue,
     pub tracker: NamedValue,
+    pub created_on: String,
     pub updated_on: String,
 }
 
@@ -97,6 +99,7 @@ pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
         project: issue.project.name,
         project_id: issue.project.id,
         tracker: issue.tracker.name,
+        created_at: issue.created_on,
         updated_at: issue.updated_on,
         url: format!("{base_url}/issues/{}", issue.id),
     }
@@ -313,6 +316,7 @@ mod tests {
                 id: 2,
                 name: "Bug".to_string(),
             },
+            created_on: "2026-08-09T08:00:00Z".to_string(),
             updated_on: "2026-08-10T08:00:00Z".to_string(),
         };
 
@@ -320,6 +324,7 @@ mod tests {
 
         assert_eq!(ticket.id, 42);
         assert_eq!(ticket.project_id, 12);
+        assert_eq!(ticket.created_at, "2026-08-09T08:00:00Z");
         assert_eq!(ticket.url, "https://redmine.example.com/issues/42");
     }
 

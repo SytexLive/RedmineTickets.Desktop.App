@@ -410,6 +410,14 @@ export function App() {
               onTicketContextMenu={(ticket, position) => {
                 setTicketContextMenu({ ticket, x: position.x, y: position.y });
               }}
+              sortLabels={{
+                sortBy: t("sortBy"),
+                updatedDesc: t("sortUpdatedDesc"),
+                createdDesc: t("sortCreatedDesc"),
+                priorityDesc: t("sortPriorityDesc"),
+                idDesc: t("sortIdDesc"),
+                idAsc: t("sortIdAsc")
+              }}
               tickets={tickets}
               unreadTicketIds={ticketState.unreadTicketIds}
             />

@@ -155,6 +155,49 @@ describe("TicketList", () => {
     );
   });
 
+  it("sorts tickets by created date when selected", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 13,
+            subject: "Created earlier",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            createdAt: "2026-08-09T08:00:00Z",
+            updatedAt: "2026-08-12T08:00:00Z",
+            url: "https://redmine.example.com/issues/13"
+          },
+          {
+            id: 14,
+            subject: "Created later",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            createdAt: "2026-08-11T08:00:00Z",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/14"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Sort by"), {
+      target: { value: "created-desc" }
+    });
+
+    expect(screen.getAllByRole("button").map((row) => row.textContent)).toEqual([
+      "#14DesktopNormalCreated laterBugNew",
+      "#13DesktopNormalCreated earlierBugNew"
+    ]);
+  });
+
   it("keeps ticket rows from shrinking when the list overflows", () => {
     render(
       <TicketList

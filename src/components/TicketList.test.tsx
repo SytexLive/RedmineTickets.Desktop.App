@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { TicketList } from "./TicketList";
+
+const styles = readFileSync(join(process.cwd(), "src", "styles.css"), "utf8");
 
 describe("TicketList", () => {
   it("renders ticket subject and metadata", () => {
@@ -149,5 +153,26 @@ describe("TicketList", () => {
     expect(screen.getByRole("button", { name: /new assignment/i })).toHaveClass(
       "ticket-row-unread"
     );
+  });
+
+  it("keeps ticket rows from shrinking when the list overflows", () => {
+    render(
+      <TicketList
+        tickets={Array.from({ length: 20 }, (_, index) => ({
+          id: index + 1,
+          subject: `Ticket ${index + 1}`,
+          status: "New",
+          priority: "Normal",
+          project: "Desktop",
+          projectId: 12,
+          tracker: "Bug",
+          updatedAt: "2026-08-10T08:00:00Z",
+          url: `https://redmine.example.com/issues/${index + 1}`
+        }))}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    expect(styles).toMatch(/\.ticket-row\s*{[^}]*flex-shrink:\s*0;/);
   });
 });

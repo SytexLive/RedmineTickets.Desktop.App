@@ -267,6 +267,8 @@ textarea {
 .ticket-row {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 7px;
   width: 100%;

@@ -648,4 +648,64 @@ describe("App", () => {
       });
     });
   });
+
+  it("auto-collapses when the pointer leaves and expands from the edge", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Existing ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Existing ticket")).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    fireEvent.mouseLeave(screen.getByRole("main"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("collapse_window", {
+      settings: {
+        monitorIndex: 0,
+        dockSide: "right"
+      }
+    });
+    expect(screen.getByRole("button", { name: "Panel ausklappen" })).toBeInTheDocument();
+
+    fireEvent.mouseEnter(screen.getByRole("main"));
+
+    expect(invokeMock).toHaveBeenCalledWith("expand_window", {
+      settings: {
+        monitorIndex: 0,
+        dockSide: "right"
+      }
+    });
+  });
+
+  it("keeps the panel open while pinned", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Pinned ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Pinned ticket")).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Panel anheften" }));
+    expect(screen.getByRole("button", { name: "Panel l\u00f6sen" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    fireEvent.mouseLeave(screen.getByRole("main"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(invokeMock.mock.calls.some(([command]) => command === "collapse_window")).toBe(false);
+    expect(screen.getByText("Pinned ticket")).toBeInTheDocument();
+  });
 });

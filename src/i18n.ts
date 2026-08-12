@@ -19,6 +19,7 @@ export type TranslationKey =
   | "openCount"
   | "openInBrowser"
   | "openTicketNumber"
+  | "pinPanel"
   | "project"
   | "redmineUrl"
   | "refreshInterval"
@@ -46,7 +47,8 @@ export type TranslationKey =
   | "ticketNotificationVolume"
   | "ticketNotificationSound"
   | "ticketTitle"
-  | "title";
+  | "title"
+  | "unpinPanel";
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   de: {
@@ -68,6 +70,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openCount: "offen",
     openInBrowser: "Im Browser \u00f6ffnen",
     openTicketNumber: "Ticketnummer \u00f6ffnen",
+    pinPanel: "Panel anheften",
     project: "Projekt",
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
@@ -95,7 +98,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationVolume: "Ticketton Lautstärke",
     ticketNotificationSound: "Ticketton",
     ticketTitle: "Titel",
-    title: "Redmine Tickets"
+    title: "Redmine Tickets",
+    unpinPanel: "Panel l\u00f6sen"
   },
   en: {
     addComment: "Add comment",
@@ -116,6 +120,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openCount: "open",
     openInBrowser: "Open in browser",
     openTicketNumber: "Open ticket number",
+    pinPanel: "Pin panel",
     project: "Project",
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
@@ -143,7 +148,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationVolume: "Ticket sound volume",
     ticketNotificationSound: "Ticket sound",
     ticketTitle: "Title",
-    title: "Redmine Tickets"
+    title: "Redmine Tickets",
+    unpinPanel: "Unpin panel"
   }
 };
 

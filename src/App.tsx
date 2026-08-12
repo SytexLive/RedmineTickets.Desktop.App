@@ -26,6 +26,7 @@ import { TicketList } from "./components/TicketList";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  PinIcon,
   RefreshIcon,
   SettingsIcon
 } from "./components/icons";
@@ -54,6 +55,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [issueStatuses, setIssueStatuses] = useState<IssueStatus[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<RedmineUser[]>([]);
@@ -64,6 +66,7 @@ export function App() {
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const collapseTimerRef = useRef<number | null>(null);
   const ticketStateRef = useRef<TicketNotificationState>({
     knownTicketIds: [],
     unreadTicketIds: []
@@ -196,6 +199,14 @@ export function App() {
     };
   }, [ticketContextMenu]);
 
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current !== null) {
+        window.clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
+
   async function handleSave(nextSettings: RedmineSettings) {
     setSaving(true);
     setError(null);
@@ -293,13 +304,49 @@ export function App() {
   }
 
   function handleCollapse() {
+    if (collapseTimerRef.current !== null) {
+      window.clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    setPinned(false);
     setCollapsed(true);
     void collapseWindow(settings);
   }
 
   function handleExpand() {
+    if (collapseTimerRef.current !== null) {
+      window.clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
     setCollapsed(false);
     void expandWindow(settings);
+  }
+
+  function handlePanelMouseEnter() {
+    if (collapseTimerRef.current !== null) {
+      window.clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+
+    if (collapsed) {
+      handleExpand();
+    }
+  }
+
+  function handlePanelMouseLeave() {
+    if (pinned || collapsed) {
+      return;
+    }
+
+    if (collapseTimerRef.current !== null) {
+      window.clearTimeout(collapseTimerRef.current);
+    }
+
+    collapseTimerRef.current = window.setTimeout(() => {
+      setCollapsed(true);
+      void collapseWindow(settings);
+      collapseTimerRef.current = null;
+    }, 350);
   }
 
   const showingSettings = viewState === "settings";
@@ -311,6 +358,8 @@ export function App() {
   return (
     <main
       className={`app-shell app-shell-${dockSide}${collapsed ? " app-shell-collapsed" : ""}`}
+      onMouseEnter={handlePanelMouseEnter}
+      onMouseLeave={handlePanelMouseLeave}
     >
       {collapsed ? (
         <button
@@ -370,6 +419,16 @@ export function App() {
                 onClick={() => setViewState("settings")}
               >
                 <SettingsIcon />
+              </button>
+              <button
+                aria-pressed={pinned}
+                aria-label={pinned ? t("unpinPanel") : t("pinPanel")}
+                className={pinned ? "is-active" : undefined}
+                title={pinned ? t("unpinPanel") : t("pinPanel")}
+                type="button"
+                onClick={() => setPinned((nextPinned) => !nextPinned)}
+              >
+                <PinIcon />
               </button>
               <button
                 aria-label={t("collapsePanel")}

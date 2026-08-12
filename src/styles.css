@@ -249,6 +249,12 @@ textarea {
   background: #f1f5fb;
 }
 
+.header-actions button.is-active {
+  border-color: #1457a8;
+  background: #e8f2ff;
+  color: #1457a8;
+}
+
 .header-actions svg,
 .edge-handle svg {
   display: block;

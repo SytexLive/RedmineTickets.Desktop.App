@@ -30,6 +30,34 @@ export function RefreshIcon({ className }: IconProps) {
   );
 }
 
+export function PlusIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path
+        d="M12 5v14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.2"
+      />
+      <path
+        d="M5 12h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.2"
+      />
+    </svg>
+  );
+}
+
 export function SettingsIcon({ className }: IconProps) {
   return (
     <svg

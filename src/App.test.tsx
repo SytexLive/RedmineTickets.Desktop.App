@@ -327,6 +327,55 @@ describe("App", () => {
     });
   });
 
+  it("creates a ticket from the new-ticket dialog", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Existing ticket")]]
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Neues Seitenpanel bauen" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Projekt-ID"), {
+      target: { value: "12" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Tracker-ID"), {
+      target: { value: "2" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Priorit\u00e4t-ID"), {
+      target: { value: "4" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Status-ID"), {
+      target: { value: "1" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Zuweisung-ID"), {
+      target: { value: "7" }
+    });
+    fireEvent.change(within(dialog).getByLabelText("Beschreibung"), {
+      target: { value: "Bitte als Docking-Feature umsetzen." }
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("create_ticket", {
+        settings: settingsFixture(),
+        ticket: {
+          subject: "Neues Seitenpanel bauen",
+          projectId: 12,
+          trackerId: 2,
+          priorityId: 4,
+          statusId: 1,
+          assignedToId: 7,
+          description: "Bitte als Docking-Feature umsetzen."
+        }
+      });
+      expect(screen.queryByRole("dialog", { name: "Ticket erstellen" })).toBeNull();
+    });
+  });
+
   it("closes the ticket context menu when clicking outside", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {
@@ -671,7 +720,8 @@ describe("App", () => {
         dockSide: "right"
       }
     });
-    expect(screen.getByRole("button", { name: "Panel ausklappen" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Redmine Tickets" })).toBeNull();
+    expect(screen.getByRole("main")).toHaveClass("app-shell-collapsed");
 
     fireEvent.mouseEnter(screen.getByRole("main"));
 
@@ -707,5 +757,25 @@ describe("App", () => {
 
     expect(invokeMock.mock.calls.some(([command]) => command === "collapse_window")).toBe(false);
     expect(screen.getByText("Pinned ticket")).toBeInTheDocument();
+  });
+
+  it("does not show manual collapse or expand icon controls", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Persistent panel ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Persistent panel ticket")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Panel einklappen" })).toBeNull();
+
+    vi.useFakeTimers();
+    fireEvent.mouseLeave(screen.getByRole("main"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

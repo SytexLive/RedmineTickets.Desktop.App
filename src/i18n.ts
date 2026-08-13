@@ -4,9 +4,13 @@ export type TranslationKey =
   | "addComment"
   | "apiKey"
   | "assignTo"
+  | "assignedToId"
   | "closeCommentDialog"
+  | "closeCreateTicketDialog"
   | "collapsePanel"
   | "comment"
+  | "createTicket"
+  | "description"
   | "errorPrefix"
   | "expandPanel"
   | "language"
@@ -21,6 +25,8 @@ export type TranslationKey =
   | "openTicketNumber"
   | "pinPanel"
   | "project"
+  | "projectId"
+  | "priorityId"
   | "redmineUrl"
   | "refreshInterval"
   | "refreshTickets"
@@ -40,6 +46,7 @@ export type TranslationKey =
   | "sortPriorityDesc"
   | "sortUpdatedDesc"
   | "status"
+  | "statusId"
   | "test"
   | "testTicketNotificationSound"
   | "ticketNumber"
@@ -48,6 +55,7 @@ export type TranslationKey =
   | "ticketNotificationSound"
   | "ticketTitle"
   | "title"
+  | "trackerId"
   | "unpinPanel";
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
@@ -55,9 +63,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     addComment: "Kommentar hinzuf\u00fcgen",
     apiKey: "API-Schl\u00fcssel",
     assignTo: "Zuweisen an",
+    assignedToId: "Zuweisung-ID",
     closeCommentDialog: "Kommentardialog schlie\u00dfen",
+    closeCreateTicketDialog: "Ticketdialog schlie\u00dfen",
     collapsePanel: "Panel einklappen",
     comment: "Kommentar",
+    createTicket: "Ticket erstellen",
+    description: "Beschreibung",
     errorPrefix: "Redmine-Fehler",
     expandPanel: "Panel ausklappen",
     language: "Sprache",
@@ -72,6 +84,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openTicketNumber: "Ticketnummer \u00f6ffnen",
     pinPanel: "Panel anheften",
     project: "Projekt",
+    projectId: "Projekt-ID",
+    priorityId: "Priorit\u00e4t-ID",
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
     refreshTickets: "Tickets aktualisieren",
@@ -91,6 +105,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sortPriorityDesc: "Priorit\u00e4t: h\u00f6chste zuerst",
     sortUpdatedDesc: "\u00c4nderungsdatum: neueste zuerst",
     status: "Status",
+    statusId: "Status-ID",
     test: "Test",
     testTicketNotificationSound: "Ticketton testen",
     ticketNumber: "Ticketnummer",
@@ -99,15 +114,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationSound: "Ticketton",
     ticketTitle: "Titel",
     title: "Redmine Tickets",
+    trackerId: "Tracker-ID",
     unpinPanel: "Panel l\u00f6sen"
   },
   en: {
     addComment: "Add comment",
     apiKey: "API key",
     assignTo: "Assign to",
+    assignedToId: "Assignee ID",
     closeCommentDialog: "Close comment dialog",
+    closeCreateTicketDialog: "Close ticket dialog",
     collapsePanel: "Collapse panel",
     comment: "Comment",
+    createTicket: "Create ticket",
+    description: "Description",
     errorPrefix: "Redmine error",
     expandPanel: "Expand panel",
     language: "Language",
@@ -122,6 +142,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     openTicketNumber: "Open ticket number",
     pinPanel: "Pin panel",
     project: "Project",
+    projectId: "Project ID",
+    priorityId: "Priority ID",
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
     refreshTickets: "Refresh tickets",
@@ -141,6 +163,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sortPriorityDesc: "Priority highest",
     sortUpdatedDesc: "Updated newest",
     status: "Status",
+    statusId: "Status ID",
     test: "Test",
     testTicketNotificationSound: "Test ticket sound",
     ticketNumber: "Ticket number",
@@ -149,6 +172,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationSound: "Ticket sound",
     ticketTitle: "Title",
     title: "Redmine Tickets",
+    trackerId: "Tracker ID",
     unpinPanel: "Unpin panel"
   }
 };
@@ -181,6 +205,8 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Missing Redmine URL": "Redmine URL fehlt",
     "Network failure while contacting Redmine":
       "Netzwerkfehler beim Kontaktieren von Redmine",
+    "Network failure while creating Redmine ticket":
+      "Netzwerkfehler beim Erstellen des Redmine-Tickets",
     "Network failure while updating Redmine ticket":
       "Netzwerkfehler beim Aktualisieren des Redmine-Tickets",
     "Redmine authentication failed": "Redmine-Authentifizierung fehlgeschlagen",
@@ -190,7 +216,10 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
       "Redmine URL muss mit http:// oder https:// beginnen",
     "Refresh interval must be at least 15 seconds":
       "Aktualisierungsintervall muss mindestens 15 Sekunden betragen",
-    "Ticket ID must be positive": "Ticketnummer muss positiv sein"
+    "Ticket ID must be positive": "Ticketnummer muss positiv sein",
+    "Ticket project must be positive": "Projekt-ID muss positiv sein",
+    "Ticket subject must not be empty": "Titel darf nicht leer sein",
+    "Ticket tracker must be positive": "Tracker-ID muss positiv sein"
   }
 };
 

@@ -29,7 +29,8 @@ pub fn load_ticket_state(app: AppHandle) -> Result<TicketNotificationState, Stri
         return Ok(TicketNotificationState::default());
     }
 
-    let content = fs::read_to_string(path).map_err(|_| "Could not read ticket state".to_string())?;
+    let content =
+        fs::read_to_string(path).map_err(|_| "Could not read ticket state".to_string())?;
     let state =
         serde_json::from_str(&content).map_err(|_| "Could not parse ticket state".to_string())?;
     Ok(state)

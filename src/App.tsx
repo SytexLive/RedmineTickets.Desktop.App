@@ -3,6 +3,7 @@ import {
   addTicketComment,
   assignTicket,
   collapseWindow,
+  createTicket,
   dockWindow,
   expandWindow,
   fetchAssignableUsers,
@@ -13,6 +14,7 @@ import {
   loadSettings,
   loadTicketState,
   type MonitorInfo,
+  type NewTicket,
   openTicketUrl,
   type RedmineUser,
   saveSettings,
@@ -24,9 +26,8 @@ import {
 import { SettingsForm } from "./components/SettingsForm";
 import { TicketList } from "./components/TicketList";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   PinIcon,
+  PlusIcon,
   RefreshIcon,
   SettingsIcon
 } from "./components/icons";
@@ -43,6 +44,15 @@ type TicketContextMenu = {
   x: number;
   y: number;
 };
+
+function parseRequiredPositiveNumber(value: string) {
+  return Number(value.trim());
+}
+
+function parseOptionalPositiveNumber(value: string) {
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? Number(trimmedValue) : undefined;
+}
 
 export function App() {
   const [settings, setSettings] = useState<RedmineSettings | null>(null);
@@ -64,6 +74,14 @@ export function App() {
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [showCreateTicketDialog, setShowCreateTicketDialog] = useState(false);
+  const [newTicketSubject, setNewTicketSubject] = useState("");
+  const [newTicketProjectId, setNewTicketProjectId] = useState("");
+  const [newTicketTrackerId, setNewTicketTrackerId] = useState("");
+  const [newTicketPriorityId, setNewTicketPriorityId] = useState("");
+  const [newTicketStatusId, setNewTicketStatusId] = useState("");
+  const [newTicketAssignedToId, setNewTicketAssignedToId] = useState("");
+  const [newTicketDescription, setNewTicketDescription] = useState("");
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
   const collapseTimerRef = useRef<number | null>(null);
@@ -291,6 +309,39 @@ export function App() {
     }
   }
 
+  async function handleCreateTicket() {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    const ticket: NewTicket = {
+      subject: newTicketSubject.trim(),
+      projectId: parseRequiredPositiveNumber(newTicketProjectId),
+      trackerId: parseRequiredPositiveNumber(newTicketTrackerId),
+      priorityId: parseOptionalPositiveNumber(newTicketPriorityId),
+      statusId: parseOptionalPositiveNumber(newTicketStatusId),
+      assignedToId: parseOptionalPositiveNumber(newTicketAssignedToId),
+      description:
+        newTicketDescription.trim().length > 0 ? newTicketDescription.trim() : undefined
+    };
+
+    try {
+      await createTicket(settings, ticket);
+      setShowCreateTicketDialog(false);
+      setNewTicketSubject("");
+      setNewTicketProjectId("");
+      setNewTicketTrackerId("");
+      setNewTicketPriorityId("");
+      setNewTicketStatusId("");
+      setNewTicketAssignedToId("");
+      setNewTicketDescription("");
+      await refreshTickets(settings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   function handleOpenCommentDialog(ticket: Ticket) {
     setCommentTicket(ticket);
     setComment("");
@@ -301,16 +352,6 @@ export function App() {
     if (settings) {
       void refreshAssignableUsers(settings, ticket.projectId);
     }
-  }
-
-  function handleCollapse() {
-    if (collapseTimerRef.current !== null) {
-      window.clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    }
-    setPinned(false);
-    setCollapsed(true);
-    void collapseWindow(settings);
   }
 
   function handleExpand() {
@@ -354,6 +395,10 @@ export function App() {
   const t = createTranslator(language);
   const dockSide = settings?.dockSide ?? "right";
   const visibleError = error ? formatError(error, language) : null;
+  const canCreateTicket =
+    newTicketSubject.trim().length > 0 &&
+    newTicketProjectId.trim().length > 0 &&
+    newTicketTrackerId.trim().length > 0;
 
   return (
     <main
@@ -361,17 +406,7 @@ export function App() {
       onMouseEnter={handlePanelMouseEnter}
       onMouseLeave={handlePanelMouseLeave}
     >
-      {collapsed ? (
-        <button
-          aria-label={t("expandPanel")}
-          className="edge-handle"
-          title={t("expandPanel")}
-          type="button"
-          onClick={handleExpand}
-        >
-          {dockSide === "right" ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-        </button>
-      ) : (
+      {collapsed ? null : (
         <>
           <header className="panel-header">
             <div>
@@ -397,6 +432,22 @@ export function App() {
               />
             </label>
             <div className="header-actions">
+              <button
+                aria-label={t("createTicket")}
+                title={t("createTicket")}
+                type="button"
+                onClick={() => {
+                  if (!settings) {
+                    setViewState("settings");
+                    return;
+                  }
+
+                  setShowCreateTicketDialog(true);
+                  setError(null);
+                }}
+              >
+                <PlusIcon />
+              </button>
               <button
                 aria-label={t("refreshTickets")}
                 title={t("refreshTickets")}
@@ -429,14 +480,6 @@ export function App() {
                 onClick={() => setPinned((nextPinned) => !nextPinned)}
               >
                 <PinIcon />
-              </button>
-              <button
-                aria-label={t("collapsePanel")}
-                title={t("collapsePanel")}
-                type="button"
-                onClick={handleCollapse}
-              >
-                {dockSide === "right" ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               </button>
             </div>
           </header>
@@ -584,6 +627,95 @@ export function App() {
                 }}
               >
                 {t("saveChanges")}
+              </button>
+            </div>
+          ) : null}
+
+          {showCreateTicketDialog ? (
+            <div className="create-ticket-dialog" role="dialog" aria-label={t("createTicket")}>
+              <div className="comment-dialog-header">
+                <strong>{t("createTicket")}</strong>
+                <button
+                  aria-label={t("closeCreateTicketDialog")}
+                  type="button"
+                  onClick={() => setShowCreateTicketDialog(false)}
+                >
+                  x
+                </button>
+              </div>
+              <label className="comment-dialog-field">
+                <span>{t("ticketTitle")}</span>
+                <input
+                  autoFocus
+                  aria-label={t("ticketTitle")}
+                  onChange={(event) => setNewTicketSubject(event.target.value)}
+                  value={newTicketSubject}
+                />
+              </label>
+              <div className="create-ticket-grid">
+                <label className="comment-dialog-field">
+                  <span>{t("projectId")}</span>
+                  <input
+                    aria-label={t("projectId")}
+                    inputMode="numeric"
+                    onChange={(event) => setNewTicketProjectId(event.target.value)}
+                    value={newTicketProjectId}
+                  />
+                </label>
+                <label className="comment-dialog-field">
+                  <span>{t("trackerId")}</span>
+                  <input
+                    aria-label={t("trackerId")}
+                    inputMode="numeric"
+                    onChange={(event) => setNewTicketTrackerId(event.target.value)}
+                    value={newTicketTrackerId}
+                  />
+                </label>
+                <label className="comment-dialog-field">
+                  <span>{t("priorityId")}</span>
+                  <input
+                    aria-label={t("priorityId")}
+                    inputMode="numeric"
+                    onChange={(event) => setNewTicketPriorityId(event.target.value)}
+                    value={newTicketPriorityId}
+                  />
+                </label>
+                <label className="comment-dialog-field">
+                  <span>{t("statusId")}</span>
+                  <input
+                    aria-label={t("statusId")}
+                    inputMode="numeric"
+                    onChange={(event) => setNewTicketStatusId(event.target.value)}
+                    value={newTicketStatusId}
+                  />
+                </label>
+                <label className="comment-dialog-field">
+                  <span>{t("assignedToId")}</span>
+                  <input
+                    aria-label={t("assignedToId")}
+                    inputMode="numeric"
+                    onChange={(event) => setNewTicketAssignedToId(event.target.value)}
+                    value={newTicketAssignedToId}
+                  />
+                </label>
+              </div>
+              <label className="comment-dialog-field">
+                <span>{t("description")}</span>
+                <textarea
+                  aria-label={t("description")}
+                  onChange={(event) => setNewTicketDescription(event.target.value)}
+                  value={newTicketDescription}
+                />
+              </label>
+              <button
+                className="primary-action"
+                disabled={!canCreateTicket}
+                type="button"
+                onClick={() => {
+                  void handleCreateTicket();
+                }}
+              >
+                {t("createTicket")}
               </button>
             </div>
           ) : null}

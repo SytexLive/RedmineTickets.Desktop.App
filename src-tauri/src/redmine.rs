@@ -54,6 +54,18 @@ pub struct RedmineUser {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NewTicket {
+    pub subject: String,
+    pub project_id: u64,
+    pub tracker_id: u64,
+    pub priority_id: Option<u64>,
+    pub status_id: Option<u64>,
+    pub assigned_to_id: Option<u64>,
+    pub description: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 struct IssueStatusesResponse {
     issue_statuses: Vec<IssueStatus>,
@@ -85,6 +97,21 @@ struct CommentUpdateIssue {
 }
 
 #[derive(Debug, Serialize)]
+struct CreateIssue {
+    subject: String,
+    project_id: u64,
+    tracker_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    assigned_to_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct UpdateIssueBody<T> {
     issue: T,
 }
@@ -109,6 +136,10 @@ pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
     format!("{}/issues/{issue_id}.json", base_url.trim_end_matches('/'))
 }
 
+pub fn issue_create_url(base_url: &str) -> String {
+    format!("{}/issues.json", base_url.trim_end_matches('/'))
+}
+
 pub fn project_memberships_url(base_url: &str, project_id: u64) -> String {
     format!(
         "{}/projects/{project_id}/memberships.json?limit=100",
@@ -119,6 +150,22 @@ pub fn project_memberships_url(base_url: &str, project_id: u64) -> String {
 pub fn validate_comment(comment: &str) -> Result<(), String> {
     if comment.trim().is_empty() {
         return Err("Comment must not be empty".to_string());
+    }
+
+    Ok(())
+}
+
+pub fn validate_new_ticket(ticket: &NewTicket) -> Result<(), String> {
+    if ticket.subject.trim().is_empty() {
+        return Err("Ticket subject must not be empty".to_string());
+    }
+
+    if ticket.project_id == 0 {
+        return Err("Ticket project must be positive".to_string());
+    }
+
+    if ticket.tracker_id == 0 {
+        return Err("Ticket tracker must be positive".to_string());
     }
 
     Ok(())
@@ -168,6 +215,41 @@ pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, Str
         .into_iter()
         .map(|issue| normalize_issue(&settings.base_url, issue))
         .collect())
+}
+
+#[tauri::command]
+pub async fn create_ticket(settings: RedmineSettings, ticket: NewTicket) -> Result<(), String> {
+    settings.validate()?;
+    validate_new_ticket(&ticket)?;
+
+    let description = ticket.description.and_then(|value| {
+        let trimmed_value = value.trim().to_string();
+        if trimmed_value.is_empty() {
+            None
+        } else {
+            Some(trimmed_value)
+        }
+    });
+
+    let response = redmine_client()
+        .post(issue_create_url(&settings.base_url))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .json(&UpdateIssueBody {
+            issue: CreateIssue {
+                subject: ticket.subject.trim().to_string(),
+                project_id: ticket.project_id,
+                tracker_id: ticket.tracker_id,
+                priority_id: ticket.priority_id,
+                status_id: ticket.status_id,
+                assigned_to_id: ticket.assigned_to_id,
+                description,
+            },
+        })
+        .send()
+        .await
+        .map_err(|_| "Network failure while creating Redmine ticket".to_string())?;
+
+    map_redmine_response_status(response.status())
 }
 
 #[tauri::command]
@@ -349,6 +431,32 @@ mod tests {
         assert_eq!(
             project_memberships_url("https://redmine.example.com/", 12),
             "https://redmine.example.com/projects/12/memberships.json?limit=100"
+        );
+    }
+
+    #[test]
+    fn builds_issue_create_url_without_duplicate_slashes() {
+        assert_eq!(
+            issue_create_url("https://redmine.example.com/"),
+            "https://redmine.example.com/issues.json"
+        );
+    }
+
+    #[test]
+    fn rejects_ticket_without_subject() {
+        let ticket = NewTicket {
+            subject: "   ".to_string(),
+            project_id: 12,
+            tracker_id: 2,
+            priority_id: Some(4),
+            status_id: Some(1),
+            assigned_to_id: None,
+            description: None,
+        };
+
+        assert_eq!(
+            validate_new_ticket(&ticket).unwrap_err(),
+            "Ticket subject must not be empty"
         );
     }
 }

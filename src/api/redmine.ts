@@ -34,6 +34,16 @@ export type RedmineUser = {
   name: string;
 };
 
+export type NewTicket = {
+  subject: string;
+  projectId: number;
+  trackerId: number;
+  priorityId?: number;
+  statusId?: number;
+  assignedToId?: number;
+  description?: string;
+};
+
 type PanelSettings = Pick<RedmineSettings, "monitorIndex" | "dockSide">;
 
 function toPanelSettings(settings?: RedmineSettings | null): PanelSettings | null {
@@ -65,6 +75,10 @@ export function saveTicketState(state: TicketNotificationState): Promise<void> {
 
 export function fetchTickets(settings: RedmineSettings): Promise<Ticket[]> {
   return invoke("fetch_tickets", { settings });
+}
+
+export function createTicket(settings: RedmineSettings, ticket: NewTicket): Promise<void> {
+  return invoke("create_ticket", { settings, ticket });
 }
 
 export function fetchIssueStatuses(settings: RedmineSettings): Promise<IssueStatus[]> {

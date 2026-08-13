@@ -77,6 +77,7 @@ pub fn run() {
             ping,
             redmine::add_ticket_comment,
             redmine::assign_ticket,
+            redmine::create_ticket,
             redmine::fetch_assignable_users,
             redmine::fetch_tickets,
             redmine::fetch_issue_statuses,

@@ -34,11 +34,10 @@ textarea {
 }
 
 .app-shell-collapsed {
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  border-left: 1px solid #cfd6e2;
-  box-shadow: -2px 0 10px rgb(18 30 48 / 10%);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
 }
 
 .panel-header {
@@ -94,8 +93,7 @@ textarea {
   padding: 6px 8px;
 }
 
-.header-actions button,
-.edge-handle {
+.header-actions button {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -154,7 +152,8 @@ textarea {
   padding: 4px 8px;
 }
 
-.comment-dialog {
+.comment-dialog,
+.create-ticket-dialog {
   position: fixed;
   right: 12px;
   bottom: 12px;
@@ -168,6 +167,11 @@ textarea {
   background: #ffffff;
   box-shadow: 0 14px 34px rgb(18 30 48 / 18%);
   padding: 10px;
+}
+
+.create-ticket-dialog {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 .comment-dialog-header {
@@ -213,12 +217,27 @@ textarea {
   line-height: 1.25;
 }
 
-.comment-dialog textarea {
+.comment-dialog textarea,
+.create-ticket-dialog textarea {
   min-height: 88px;
   resize: vertical;
   border: 1px solid #cbd3df;
   border-radius: 6px;
   padding: 8px 10px;
+}
+
+.create-ticket-dialog input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+
+.create-ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .comment-dialog-field {
@@ -243,8 +262,7 @@ textarea {
   font-size: 12px;
 }
 
-.header-actions button:hover,
-.edge-handle:hover {
+.header-actions button:hover {
   border-color: #8796ad;
   background: #f1f5fb;
 }
@@ -255,8 +273,7 @@ textarea {
   color: #1457a8;
 }
 
-.header-actions svg,
-.edge-handle svg {
+.header-actions svg {
   display: block;
 }
 
@@ -537,18 +554,7 @@ textarea {
   color: #9f1d1d;
 }
 
-.edge-handle {
-  width: 30px;
-  height: 54px;
-  border-radius: 10px 0 0 10px;
-  color: #1457a8;
-}
-
 .app-shell-left {
   border-right: 1px solid #d9dee7;
   border-left: 0;
-}
-
-.app-shell-left .edge-handle {
-  border-radius: 0 10px 10px 0;
 }

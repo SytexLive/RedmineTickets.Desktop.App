@@ -29,4 +29,13 @@ describe("release packaging layout", () => {
       )
     ).toBe(true);
   });
+
+  it("detects direct execution for Windows script paths case-insensitively", () => {
+    expect(
+      isDirectExecution(
+        "file:///c:/Users/Dominik/Documents/Projekte/RedmineTickets.Desktop.App/scripts/package-release.mjs",
+        "C:\\Users\\Dominik\\Documents\\Projekte\\RedmineTickets.Desktop.App\\scripts\\package-release.mjs"
+      )
+    ).toBe(true);
+  });
 });

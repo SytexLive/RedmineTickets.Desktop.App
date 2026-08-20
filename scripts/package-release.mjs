@@ -80,7 +80,23 @@ export function packageRelease() {
 }
 
 export function isDirectExecution(moduleUrl, scriptPath) {
-  return path.resolve(fileURLToPath(moduleUrl)) === path.resolve(scriptPath);
+  const normalizeExecutionPath = (filePath) => {
+    let normalized = filePath.replaceAll("\\", "/");
+
+    if (/^\/[A-Za-z]:\//.test(normalized)) {
+      normalized = normalized.slice(1);
+    }
+
+    if (/^[A-Za-z]:\//.test(normalized)) {
+      return normalized.toLowerCase();
+    }
+
+    return path.resolve(normalized).replaceAll("\\", "/");
+  };
+
+  return (
+    normalizeExecutionPath(fileURLToPath(moduleUrl)) === normalizeExecutionPath(scriptPath)
+  );
 }
 
 if (process.argv[1] && isDirectExecution(import.meta.url, process.argv[1])) {

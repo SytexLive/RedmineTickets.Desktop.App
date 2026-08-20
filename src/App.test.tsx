@@ -466,6 +466,165 @@ describe("App", () => {
     });
   });
 
+  it("uses the Redmine priority named Normal as the default create priority", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") {
+        return Promise.resolve([
+          { id: 3, name: "Niedrig" },
+          { id: 4, name: "Normal" }
+        ]);
+      }
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_assignable_users") return Promise.resolve([]);
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Standardpriorität testen" }
+    });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
+      target: { value: "2" }
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("create_ticket", {
+        settings: settingsFixture(),
+        ticket: expect.objectContaining({
+          priorityId: 4
+        })
+      });
+    });
+  });
+
+  it("adds dropped and pasted image files to a newly created ticket", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_assignable_users") return Promise.resolve([]);
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Bilder anhängen" }
+    });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
+      target: { value: "2" }
+    });
+
+    const description = within(dialog).getByLabelText("Beschreibung");
+    const droppedFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
+      type: "image/png"
+    });
+    const pastedFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
+      type: "image/jpeg"
+    });
+
+    fireEvent.drop(description, {
+      dataTransfer: {
+        files: [droppedFile]
+      }
+    });
+    fireEvent.paste(description, {
+      clipboardData: {
+        files: [pastedFile],
+        items: []
+      }
+    });
+
+    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
+    expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("create_ticket", {
+        settings: settingsFixture(),
+        ticket: expect.objectContaining({
+          attachments: [
+            {
+              filename: "drop.png",
+              contentType: "image/png",
+              content: [1, 2, 3]
+            },
+            {
+              filename: "paste.jpg",
+              contentType: "image/jpeg",
+              content: [4, 5]
+            }
+          ]
+        })
+      });
+    });
+  });
+
+  it("formats selected description text with the editor toolbar", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Existing ticket")]]
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    const description = within(dialog).getByLabelText("Beschreibung") as HTMLTextAreaElement;
+
+    fireEvent.change(description, { target: { value: "wichtig" } });
+    description.setSelectionRange(0, 7);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Fett" }));
+
+    expect(description.value).toBe("*wichtig*");
+
+    description.setSelectionRange(0, description.value.length);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Kursiv" }));
+
+    expect(description.value).toBe("_*wichtig*_");
+  });
+
   it("filters project options inside the project dropdown", async () => {
     invokeMock.mockImplementation((command: string, args?: unknown) => {
       if (command === "dock_window") return Promise.resolve();

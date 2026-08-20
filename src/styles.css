@@ -298,6 +298,62 @@ textarea {
   padding: 8px 10px;
 }
 
+.description-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.description-editor-toolbar button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border: 1px solid #cbd3df;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #1b1f24;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 7px;
+}
+
+.description-editor-toolbar button:hover {
+  border-color: #8796ad;
+  background: #f1f5fb;
+}
+
+.create-ticket-attachments {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #edf1f6;
+  border-radius: 6px;
+  background: #f7f9fc;
+  color: #4d5868;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.create-ticket-attachments > span {
+  color: #697282;
+  font-size: 11px;
+}
+
+.create-ticket-attachments ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.create-ticket-attachments li {
+  overflow-wrap: anywhere;
+  color: #16253b;
+}
+
 .create-ticket-dialog input,
 .create-ticket-dialog select {
   width: 100%;

@@ -85,6 +85,16 @@ pub struct NewTicket {
     pub status_id: Option<u64>,
     pub assigned_to_id: Option<u64>,
     pub description: Option<String>,
+    #[serde(default)]
+    pub attachments: Vec<NewTicketAttachment>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NewTicketAttachment {
+    pub filename: String,
+    pub content_type: String,
+    pub content: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -148,6 +158,25 @@ struct CreateIssue {
     assigned_to_id: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uploads: Option<Vec<CreateIssueUpload>>,
+}
+
+#[derive(Debug, Serialize)]
+struct CreateIssueUpload {
+    token: String,
+    filename: String,
+    content_type: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UploadResponse {
+    upload: UploadedFile,
+}
+
+#[derive(Debug, Deserialize)]
+struct UploadedFile {
+    token: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -177,6 +206,15 @@ pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
 
 pub fn issue_create_url(base_url: &str) -> String {
     format!("{}/issues.json", base_url.trim_end_matches('/'))
+}
+
+pub fn upload_url(base_url: &str, filename: &str) -> String {
+    let encoded_filename: String =
+        url::form_urlencoded::byte_serialize(filename.as_bytes()).collect();
+    format!(
+        "{}/uploads.json?filename={encoded_filename}",
+        base_url.trim_end_matches('/')
+    )
 }
 
 pub fn projects_url(base_url: &str, offset: u64) -> String {
@@ -227,6 +265,14 @@ pub fn validate_new_ticket(ticket: &NewTicket) -> Result<(), String> {
 
     if ticket.tracker_id == 0 {
         return Err("Ticket tracker must be positive".to_string());
+    }
+
+    if ticket
+        .attachments
+        .iter()
+        .any(|attachment| attachment.filename.trim().is_empty())
+    {
+        return Err("Ticket attachment filename must not be empty".to_string());
     }
 
     Ok(())
@@ -282,6 +328,7 @@ pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, Str
 pub async fn create_ticket(settings: RedmineSettings, ticket: NewTicket) -> Result<(), String> {
     settings.validate()?;
     validate_new_ticket(&ticket)?;
+    let client = redmine_client();
 
     let description = ticket.description.and_then(|value| {
         let trimmed_value = value.trim().to_string();
@@ -291,8 +338,33 @@ pub async fn create_ticket(settings: RedmineSettings, ticket: NewTicket) -> Resu
             Some(trimmed_value)
         }
     });
+    let mut uploads = Vec::new();
 
-    let response = redmine_client()
+    for attachment in &ticket.attachments {
+        let response = client
+            .post(upload_url(&settings.base_url, attachment.filename.trim()))
+            .header("X-Redmine-API-Key", &settings.api_key)
+            .header("Content-Type", "application/octet-stream")
+            .body(attachment.content.clone())
+            .send()
+            .await
+            .map_err(|_| "Network failure while uploading Redmine attachment".to_string())?;
+
+        map_redmine_response_status(response.status())?;
+
+        let parsed = response
+            .json::<UploadResponse>()
+            .await
+            .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+        uploads.push(CreateIssueUpload {
+            token: parsed.upload.token,
+            filename: attachment.filename.trim().to_string(),
+            content_type: attachment.content_type.trim().to_string(),
+        });
+    }
+
+    let response = client
         .post(issue_create_url(&settings.base_url))
         .header("X-Redmine-API-Key", settings.api_key)
         .json(&UpdateIssueBody {
@@ -304,6 +376,11 @@ pub async fn create_ticket(settings: RedmineSettings, ticket: NewTicket) -> Resu
                 status_id: ticket.status_id,
                 assigned_to_id: ticket.assigned_to_id,
                 description,
+                uploads: if uploads.is_empty() {
+                    None
+                } else {
+                    Some(uploads)
+                },
             },
         })
         .send()
@@ -640,11 +717,43 @@ mod tests {
             status_id: Some(1),
             assigned_to_id: None,
             description: None,
+            attachments: vec![],
         };
 
         assert_eq!(
             validate_new_ticket(&ticket).unwrap_err(),
             "Ticket subject must not be empty"
+        );
+    }
+
+    #[test]
+    fn builds_upload_url_with_encoded_filename() {
+        assert_eq!(
+            upload_url("https://redmine.example.com/", "screen shot.png"),
+            "https://redmine.example.com/uploads.json?filename=screen+shot.png"
+        );
+    }
+
+    #[test]
+    fn rejects_ticket_attachment_without_filename() {
+        let ticket = NewTicket {
+            subject: "Fix sidebar".to_string(),
+            project_id: 12,
+            tracker_id: 2,
+            priority_id: Some(4),
+            status_id: Some(1),
+            assigned_to_id: None,
+            description: None,
+            attachments: vec![NewTicketAttachment {
+                filename: "   ".to_string(),
+                content_type: "image/png".to_string(),
+                content: vec![1, 2, 3],
+            }],
+        };
+
+        assert_eq!(
+            validate_new_ticket(&ticket).unwrap_err(),
+            "Ticket attachment filename must not be empty"
         );
     }
 }

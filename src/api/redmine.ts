@@ -57,6 +57,13 @@ export type NewTicket = {
   statusId?: number;
   assignedToId?: number;
   description?: string;
+  attachments?: NewTicketAttachment[];
+};
+
+export type NewTicketAttachment = {
+  filename: string;
+  contentType: string;
+  content: number[];
 };
 
 type PanelSettings = Pick<RedmineSettings, "monitorIndex" | "dockSide">;

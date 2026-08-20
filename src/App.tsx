@@ -18,6 +18,7 @@ import {
   loadSettings,
   loadTicketState,
   type MonitorInfo,
+  type NewTicketAttachment,
   type NewTicket,
   openTicketUrl,
   type RedmineProject,
@@ -70,6 +71,15 @@ function findDefaultNewStatusId(statuses: IssueStatus[]) {
   return newStatus ? String(newStatus.id) : "";
 }
 
+function findDefaultNormalPriorityId(priorities: IssuePriority[]) {
+  const normalPriority = priorities.find((priority) => {
+    const normalizedName = priority.name.trim().toLowerCase();
+    return normalizedName === "normal";
+  });
+
+  return normalPriority ? String(normalPriority.id) : "";
+}
+
 function loadPinnedPanelState() {
   try {
     return window.localStorage.getItem(PINNED_PANEL_STORAGE_KEY) === "true";
@@ -120,9 +130,11 @@ export function App() {
   const [newTicketStatusId, setNewTicketStatusId] = useState("");
   const [newTicketAssignedToId, setNewTicketAssignedToId] = useState("");
   const [newTicketDescription, setNewTicketDescription] = useState("");
+  const [newTicketAttachments, setNewTicketAttachments] = useState<NewTicketAttachment[]>([]);
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
   const newTicketProjectFieldRef = useRef<HTMLLabelElement | null>(null);
+  const newTicketDescriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const collapseTimerRef = useRef<number | null>(null);
   const ticketStateRef = useRef<TicketNotificationState>({
     knownTicketIds: [],
@@ -179,7 +191,11 @@ export function App() {
     ]);
     setProjects(Array.isArray(loadedProjects) ? loadedProjects : []);
     setTrackers(Array.isArray(loadedTrackers) ? loadedTrackers : []);
-    setIssuePriorities(Array.isArray(loadedPriorities) ? loadedPriorities : []);
+    const nextPriorities = Array.isArray(loadedPriorities) ? loadedPriorities : [];
+    setIssuePriorities(nextPriorities);
+    setNewTicketPriorityId((currentPriorityId) =>
+      currentPriorityId || findDefaultNormalPriorityId(nextPriorities)
+    );
   }, []);
 
   const refreshAssignableUsers = useCallback(async (
@@ -414,7 +430,8 @@ export function App() {
       statusId: optionalSelectedOptionId(newTicketStatusId),
       assignedToId: optionalSelectedOptionId(newTicketAssignedToId),
       description:
-        newTicketDescription.trim().length > 0 ? newTicketDescription.trim() : undefined
+        newTicketDescription.trim().length > 0 ? newTicketDescription.trim() : undefined,
+      attachments: newTicketAttachments.length > 0 ? newTicketAttachments : undefined
     };
 
     try {
@@ -425,10 +442,11 @@ export function App() {
       setNewTicketProjectSearch("");
       setShowNewTicketProjectOptions(false);
       setNewTicketTrackerId("");
-      setNewTicketPriorityId("");
+      setNewTicketPriorityId(findDefaultNormalPriorityId(issuePriorities));
       setNewTicketStatusId(findDefaultNewStatusId(issueStatuses));
       setNewTicketAssignedToId("");
       setNewTicketDescription("");
+      setNewTicketAttachments([]);
       setNewTicketAssignableUsers([]);
       await refreshTickets(settings);
     } catch (err) {
@@ -462,7 +480,56 @@ export function App() {
     setNewTicketStatusId((currentStatusId) =>
       currentStatusId || findDefaultNewStatusId(issueStatuses)
     );
+    setNewTicketPriorityId((currentPriorityId) =>
+      currentPriorityId || findDefaultNormalPriorityId(issuePriorities)
+    );
     void refreshTicketCreateOptions(settings);
+  }
+
+  async function handleAddNewTicketFiles(files: FileList | File[]) {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    const attachments = await Promise.all(
+      imageFiles.map(async (file) => ({
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        content: Array.from(new Uint8Array(await file.arrayBuffer()))
+      }))
+    );
+
+    setNewTicketAttachments((currentAttachments) => [
+      ...currentAttachments,
+      ...attachments
+    ]);
+  }
+
+  function formatNewTicketDescription(prefix: string, suffix = prefix) {
+    const textarea = newTicketDescriptionRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selectedText = newTicketDescription.slice(selectionStart, selectionEnd);
+    const fallbackText = selectedText || "Text";
+    const formattedText = `${prefix}${fallbackText}${suffix}`;
+    const nextDescription =
+      newTicketDescription.slice(0, selectionStart) +
+      formattedText +
+      newTicketDescription.slice(selectionEnd);
+
+    setNewTicketDescription(nextDescription);
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        selectionStart + prefix.length,
+        selectionStart + prefix.length + fallbackText.length
+      );
+    });
   }
 
   function handleSearchNewTicketProject(search: string) {
@@ -908,14 +975,82 @@ export function App() {
                   </select>
                 </label>
               </div>
-              <label className="comment-dialog-field">
+              <div className="comment-dialog-field">
                 <span>{t("description")}</span>
+                <div className="description-editor-toolbar">
+                  <button
+                    aria-label={t("descriptionBold")}
+                    title={t("descriptionBold")}
+                    type="button"
+                    onClick={() => formatNewTicketDescription("*")}
+                  >
+                    B
+                  </button>
+                  <button
+                    aria-label={t("descriptionItalic")}
+                    title={t("descriptionItalic")}
+                    type="button"
+                    onClick={() => formatNewTicketDescription("_")}
+                  >
+                    I
+                  </button>
+                  <button
+                    aria-label={t("descriptionCode")}
+                    title={t("descriptionCode")}
+                    type="button"
+                    onClick={() => formatNewTicketDescription("@")}
+                  >
+                    {"<>"}
+                  </button>
+                  <button
+                    aria-label={t("descriptionBulletedList")}
+                    title={t("descriptionBulletedList")}
+                    type="button"
+                    onClick={() => formatNewTicketDescription("* ", "")}
+                  >
+                    •
+                  </button>
+                  <button
+                    aria-label={t("descriptionQuote")}
+                    title={t("descriptionQuote")}
+                    type="button"
+                    onClick={() => formatNewTicketDescription("> ", "")}
+                  >
+                    “
+                  </button>
+                </div>
                 <textarea
                   aria-label={t("description")}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    void handleAddNewTicketFiles(event.dataTransfer.files);
+                  }}
+                  onPaste={(event) => {
+                    if (event.clipboardData.files.length > 0) {
+                      void handleAddNewTicketFiles(event.clipboardData.files);
+                    }
+                  }}
                   onChange={(event) => setNewTicketDescription(event.target.value)}
+                  placeholder={t("descriptionAttachmentHint")}
+                  ref={newTicketDescriptionRef}
                   value={newTicketDescription}
                 />
-              </label>
+              </div>
+              {newTicketAttachments.length > 0 ? (
+                <div className="create-ticket-attachments">
+                  <span>{t("descriptionAttachments")}</span>
+                  <ul>
+                    {newTicketAttachments.map((attachment, index) => (
+                      <li key={`${attachment.filename}-${index}`}>
+                        {attachment.filename}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <button
                 className="primary-action"
                 disabled={!canCreateTicket}

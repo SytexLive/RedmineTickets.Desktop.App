@@ -12,6 +12,13 @@ export type TranslationKey =
   | "createTicket"
   | "chooseOption"
   | "description"
+  | "descriptionAttachmentHint"
+  | "descriptionAttachments"
+  | "descriptionBold"
+  | "descriptionBulletedList"
+  | "descriptionCode"
+  | "descriptionItalic"
+  | "descriptionQuote"
   | "errorPrefix"
   | "expandPanel"
   | "language"
@@ -74,6 +81,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     createTicket: "Ticket erstellen",
     chooseOption: "Bitte wählen",
     description: "Beschreibung",
+    descriptionAttachmentHint: "Bilder hier hineinziehen oder einfügen",
+    descriptionAttachments: "Anhänge",
+    descriptionBold: "Fett",
+    descriptionBulletedList: "Liste",
+    descriptionCode: "Code",
+    descriptionItalic: "Kursiv",
+    descriptionQuote: "Zitat",
     errorPrefix: "Redmine-Fehler",
     expandPanel: "Panel ausklappen",
     language: "Sprache",
@@ -135,6 +149,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     createTicket: "Create ticket",
     chooseOption: "Choose",
     description: "Description",
+    descriptionAttachmentHint: "Drop or paste images here",
+    descriptionAttachments: "Attachments",
+    descriptionBold: "Bold",
+    descriptionBulletedList: "List",
+    descriptionCode: "Code",
+    descriptionItalic: "Italic",
+    descriptionQuote: "Quote",
     errorPrefix: "Redmine error",
     expandPanel: "Expand panel",
     language: "Language",

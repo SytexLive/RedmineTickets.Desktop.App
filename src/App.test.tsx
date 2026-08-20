@@ -92,6 +92,7 @@ describe("App", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
     window.localStorage.clear();
     invokeMock.mockReset();
   });
@@ -393,6 +394,7 @@ describe("App", () => {
     render(<App />);
 
     const ticket = await screen.findByText("Login reparieren");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 });
     fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
 
     const menuButtons = await screen.findAllByRole("button");
@@ -406,7 +408,10 @@ describe("App", () => {
     expect(openInBrowserIndex).toBeGreaterThan(addCommentIndex);
 
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
-    expect(await screen.findByRole("button", { name: "In Bearbeitung" })).toBeTruthy();
+    const statusOption = await screen.findByRole("button", { name: "In Bearbeitung" });
+    const statusFlyout = statusOption.closest(".context-menu-flyout");
+    expect(statusFlyout).toHaveClass("open-stacked");
+    expect(statusFlyout).not.toHaveClass("open-left");
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /Zuweisen an/ }));

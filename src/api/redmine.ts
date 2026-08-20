@@ -29,6 +29,21 @@ export type IssueStatus = {
   name: string;
 };
 
+export type RedmineProject = {
+  id: number;
+  name: string;
+};
+
+export type RedmineTracker = {
+  id: number;
+  name: string;
+};
+
+export type IssuePriority = {
+  id: number;
+  name: string;
+};
+
 export type RedmineUser = {
   id: number;
   name: string;
@@ -79,6 +94,18 @@ export function fetchTickets(settings: RedmineSettings): Promise<Ticket[]> {
 
 export function createTicket(settings: RedmineSettings, ticket: NewTicket): Promise<void> {
   return invoke("create_ticket", { settings, ticket });
+}
+
+export function fetchProjects(settings: RedmineSettings): Promise<RedmineProject[]> {
+  return invoke("fetch_projects", { settings });
+}
+
+export function fetchTrackers(settings: RedmineSettings): Promise<RedmineTracker[]> {
+  return invoke("fetch_trackers", { settings });
+}
+
+export function fetchIssuePriorities(settings: RedmineSettings): Promise<IssuePriority[]> {
+  return invoke("fetch_issue_priorities", { settings });
 }
 
 export function fetchIssueStatuses(settings: RedmineSettings): Promise<IssueStatus[]> {

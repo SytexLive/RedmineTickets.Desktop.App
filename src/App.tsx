@@ -7,8 +7,12 @@ import {
   dockWindow,
   expandWindow,
   fetchAssignableUsers,
+  fetchIssuePriorities,
   fetchIssueStatuses,
+  fetchProjects,
   fetchTickets,
+  fetchTrackers,
+  type IssuePriority,
   listMonitors,
   type IssueStatus,
   loadSettings,
@@ -16,10 +20,12 @@ import {
   type MonitorInfo,
   type NewTicket,
   openTicketUrl,
+  type RedmineProject,
+  type RedmineSettings,
+  type RedmineTracker,
   type RedmineUser,
   saveSettings,
   saveTicketState,
-  type RedmineSettings,
   type TicketNotificationState,
   updateTicketStatus
 } from "./api/redmine";
@@ -45,13 +51,39 @@ type TicketContextMenu = {
   y: number;
 };
 
-function parseRequiredPositiveNumber(value: string) {
-  return Number(value.trim());
+const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
+
+function selectedOptionId(value: string) {
+  return Number(value);
 }
 
-function parseOptionalPositiveNumber(value: string) {
-  const trimmedValue = value.trim();
-  return trimmedValue.length > 0 ? Number(trimmedValue) : undefined;
+function optionalSelectedOptionId(value: string) {
+  return value ? Number(value) : undefined;
+}
+
+function findDefaultNewStatusId(statuses: IssueStatus[]) {
+  const newStatus = statuses.find((status) => {
+    const normalizedName = status.name.trim().toLowerCase();
+    return normalizedName === "neu" || normalizedName === "new";
+  });
+
+  return newStatus ? String(newStatus.id) : "";
+}
+
+function loadPinnedPanelState() {
+  try {
+    return window.localStorage.getItem(PINNED_PANEL_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function savePinnedPanelState(pinned: boolean) {
+  try {
+    window.localStorage.setItem(PINNED_PANEL_STORAGE_KEY, String(pinned));
+  } catch {
+    // The panel can still work when localStorage is unavailable.
+  }
 }
 
 export function App() {
@@ -65,10 +97,14 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [pinned, setPinned] = useState(false);
+  const [pinned, setPinned] = useState(loadPinnedPanelState);
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
+  const [projects, setProjects] = useState<RedmineProject[]>([]);
+  const [trackers, setTrackers] = useState<RedmineTracker[]>([]);
+  const [issuePriorities, setIssuePriorities] = useState<IssuePriority[]>([]);
   const [issueStatuses, setIssueStatuses] = useState<IssueStatus[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<RedmineUser[]>([]);
+  const [newTicketAssignableUsers, setNewTicketAssignableUsers] = useState<RedmineUser[]>([]);
   const [ticketContextMenu, setTicketContextMenu] =
     useState<TicketContextMenu | null>(null);
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
@@ -77,6 +113,8 @@ export function App() {
   const [showCreateTicketDialog, setShowCreateTicketDialog] = useState(false);
   const [newTicketSubject, setNewTicketSubject] = useState("");
   const [newTicketProjectId, setNewTicketProjectId] = useState("");
+  const [newTicketProjectSearch, setNewTicketProjectSearch] = useState("");
+  const [showNewTicketProjectOptions, setShowNewTicketProjectOptions] = useState(false);
   const [newTicketTrackerId, setNewTicketTrackerId] = useState("");
   const [newTicketPriorityId, setNewTicketPriorityId] = useState("");
   const [newTicketStatusId, setNewTicketStatusId] = useState("");
@@ -84,6 +122,7 @@ export function App() {
   const [newTicketDescription, setNewTicketDescription] = useState("");
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const newTicketProjectFieldRef = useRef<HTMLLabelElement | null>(null);
   const collapseTimerRef = useRef<number | null>(null);
   const ticketStateRef = useRef<TicketNotificationState>({
     knownTicketIds: [],
@@ -122,10 +161,25 @@ export function App() {
   const refreshIssueStatuses = useCallback(async (nextSettings: RedmineSettings) => {
     try {
       const loadedStatuses = await fetchIssueStatuses(nextSettings);
-      setIssueStatuses(loadedStatuses);
+      const nextStatuses = Array.isArray(loadedStatuses) ? loadedStatuses : [];
+      setIssueStatuses(nextStatuses);
+      setNewTicketStatusId((currentStatusId) =>
+        currentStatusId || findDefaultNewStatusId(nextStatuses)
+      );
     } catch {
       setIssueStatuses([]);
     }
+  }, []);
+
+  const refreshTicketCreateOptions = useCallback(async (nextSettings: RedmineSettings) => {
+    const [loadedProjects, loadedTrackers, loadedPriorities] = await Promise.all([
+      fetchProjects(nextSettings).catch(() => []),
+      fetchTrackers(nextSettings).catch(() => []),
+      fetchIssuePriorities(nextSettings).catch(() => [])
+    ]);
+    setProjects(Array.isArray(loadedProjects) ? loadedProjects : []);
+    setTrackers(Array.isArray(loadedTrackers) ? loadedTrackers : []);
+    setIssuePriorities(Array.isArray(loadedPriorities) ? loadedPriorities : []);
   }, []);
 
   const refreshAssignableUsers = useCallback(async (
@@ -137,6 +191,18 @@ export function App() {
       setAssignableUsers(loadedUsers);
     } catch {
       setAssignableUsers([]);
+    }
+  }, []);
+
+  const refreshNewTicketAssignableUsers = useCallback(async (
+    nextSettings: RedmineSettings,
+    projectId: number
+  ) => {
+    try {
+      const loadedUsers = await fetchAssignableUsers(nextSettings, projectId);
+      setNewTicketAssignableUsers(loadedUsers);
+    } catch {
+      setNewTicketAssignableUsers([]);
     }
   }, []);
 
@@ -165,6 +231,7 @@ export function App() {
         }
         void dockWindow(loadedSettings);
         void refreshIssueStatuses(loadedSettings);
+        void refreshTicketCreateOptions(loadedSettings);
         void refreshTickets(loadedSettings);
       })
       .catch((err) => {
@@ -179,7 +246,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refreshIssueStatuses, refreshTickets]);
+  }, [refreshIssueStatuses, refreshTicketCreateOptions, refreshTickets]);
 
   useEffect(() => {
     if (!settings) {
@@ -218,6 +285,29 @@ export function App() {
   }, [ticketContextMenu]);
 
   useEffect(() => {
+    if (!showNewTicketProjectOptions) {
+      return;
+    }
+
+    function closeProjectOptionsOnOutsideClick(event: MouseEvent) {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        newTicketProjectFieldRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setShowNewTicketProjectOptions(false);
+    }
+
+    document.addEventListener("mousedown", closeProjectOptionsOnOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", closeProjectOptionsOnOutsideClick);
+    };
+  }, [showNewTicketProjectOptions]);
+
+  useEffect(() => {
     return () => {
       if (collapseTimerRef.current !== null) {
         window.clearTimeout(collapseTimerRef.current);
@@ -233,6 +323,7 @@ export function App() {
       setSettings(nextSettings);
       await dockWindow(nextSettings);
       await refreshIssueStatuses(nextSettings);
+      await refreshTicketCreateOptions(nextSettings);
       await refreshTickets(nextSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -317,11 +408,11 @@ export function App() {
 
     const ticket: NewTicket = {
       subject: newTicketSubject.trim(),
-      projectId: parseRequiredPositiveNumber(newTicketProjectId),
-      trackerId: parseRequiredPositiveNumber(newTicketTrackerId),
-      priorityId: parseOptionalPositiveNumber(newTicketPriorityId),
-      statusId: parseOptionalPositiveNumber(newTicketStatusId),
-      assignedToId: parseOptionalPositiveNumber(newTicketAssignedToId),
+      projectId: selectedOptionId(newTicketProjectId),
+      trackerId: selectedOptionId(newTicketTrackerId),
+      priorityId: optionalSelectedOptionId(newTicketPriorityId),
+      statusId: optionalSelectedOptionId(newTicketStatusId),
+      assignedToId: optionalSelectedOptionId(newTicketAssignedToId),
       description:
         newTicketDescription.trim().length > 0 ? newTicketDescription.trim() : undefined
     };
@@ -331,11 +422,14 @@ export function App() {
       setShowCreateTicketDialog(false);
       setNewTicketSubject("");
       setNewTicketProjectId("");
+      setNewTicketProjectSearch("");
+      setShowNewTicketProjectOptions(false);
       setNewTicketTrackerId("");
       setNewTicketPriorityId("");
-      setNewTicketStatusId("");
+      setNewTicketStatusId(findDefaultNewStatusId(issueStatuses));
       setNewTicketAssignedToId("");
       setNewTicketDescription("");
+      setNewTicketAssignableUsers([]);
       await refreshTickets(settings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -351,6 +445,50 @@ export function App() {
 
     if (settings) {
       void refreshAssignableUsers(settings, ticket.projectId);
+    }
+  }
+
+  function handleOpenCreateTicketDialog() {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    setShowCreateTicketDialog(true);
+    setError(null);
+    setNewTicketAssignableUsers([]);
+    setNewTicketProjectSearch("");
+    setShowNewTicketProjectOptions(false);
+    setNewTicketStatusId((currentStatusId) =>
+      currentStatusId || findDefaultNewStatusId(issueStatuses)
+    );
+    void refreshTicketCreateOptions(settings);
+  }
+
+  function handleSearchNewTicketProject(search: string) {
+    setNewTicketProjectSearch(search);
+    setShowNewTicketProjectOptions(true);
+    const matchingProject = projects.find(
+      (project) => project.name.trim().toLowerCase() === search.trim().toLowerCase()
+    );
+    setNewTicketProjectId(matchingProject ? String(matchingProject.id) : "");
+    setNewTicketAssignedToId("");
+    setNewTicketAssignableUsers([]);
+
+    if (settings && matchingProject) {
+      void refreshNewTicketAssignableUsers(settings, matchingProject.id);
+    }
+  }
+
+  function handleSelectNewTicketProject(project: RedmineProject) {
+    setNewTicketProjectId(String(project.id));
+    setNewTicketProjectSearch(project.name);
+    setShowNewTicketProjectOptions(false);
+    setNewTicketAssignedToId("");
+    setNewTicketAssignableUsers([]);
+
+    if (settings) {
+      void refreshNewTicketAssignableUsers(settings, project.id);
     }
   }
 
@@ -390,6 +528,14 @@ export function App() {
     }, 350);
   }
 
+  function handleTogglePinned() {
+    setPinned((currentPinned) => {
+      const nextPinned = !currentPinned;
+      savePinnedPanelState(nextPinned);
+      return nextPinned;
+    });
+  }
+
   const showingSettings = viewState === "settings";
   const language: Language = settings?.language ?? "de";
   const t = createTranslator(language);
@@ -397,8 +543,15 @@ export function App() {
   const visibleError = error ? formatError(error, language) : null;
   const canCreateTicket =
     newTicketSubject.trim().length > 0 &&
-    newTicketProjectId.trim().length > 0 &&
-    newTicketTrackerId.trim().length > 0;
+    newTicketProjectId.length > 0 &&
+    newTicketTrackerId.length > 0;
+  const normalizedProjectFilter = newTicketProjectSearch.trim().toLowerCase();
+  const filteredProjects =
+    normalizedProjectFilter.length === 0
+      ? projects
+      : projects.filter((project) =>
+          project.name.toLowerCase().includes(normalizedProjectFilter)
+        );
 
   return (
     <main
@@ -406,12 +559,65 @@ export function App() {
       onMouseEnter={handlePanelMouseEnter}
       onMouseLeave={handlePanelMouseLeave}
     >
-      {collapsed ? null : (
+      {collapsed ? (
+        <div
+          aria-label={`${tickets.length} ${t("openCount")}`}
+          className="collapsed-panel-handle"
+          title={`${tickets.length} ${t("openCount")}`}
+        >
+          <span className="collapsed-ticket-badge">{tickets.length}</span>
+        </div>
+      ) : (
         <>
           <header className="panel-header">
-            <div>
-              <h1>{t("title")}</h1>
-              <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
+            <div className="panel-header-top">
+              <div className="panel-title-block">
+                <h1>{t("title")}</h1>
+                <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
+              </div>
+              <div className="header-actions">
+                <button
+                  aria-label={t("createTicket")}
+                  title={t("createTicket")}
+                  type="button"
+                  onClick={handleOpenCreateTicketDialog}
+                >
+                  <PlusIcon />
+                </button>
+                <button
+                  aria-label={t("refreshTickets")}
+                  title={t("refreshTickets")}
+                  type="button"
+                  onClick={() => {
+                    if (!settings) {
+                      setViewState("settings");
+                      return;
+                    }
+
+                    void refreshTickets(settings);
+                  }}
+                >
+                  <RefreshIcon />
+                </button>
+                <button
+                  aria-label={t("showSettings")}
+                  title={t("showSettings")}
+                  type="button"
+                  onClick={() => setViewState("settings")}
+                >
+                  <SettingsIcon />
+                </button>
+                <button
+                  aria-pressed={pinned}
+                  aria-label={pinned ? t("unpinPanel") : t("pinPanel")}
+                  className={pinned ? "is-active" : undefined}
+                  title={pinned ? t("unpinPanel") : t("pinPanel")}
+                  type="button"
+                  onClick={handleTogglePinned}
+                >
+                  <PinIcon />
+                </button>
+              </div>
             </div>
             <label className="ticket-number-form">
               <span>{t("ticketNumber")}</span>
@@ -431,57 +637,6 @@ export function App() {
                 value={quickTicketNumber}
               />
             </label>
-            <div className="header-actions">
-              <button
-                aria-label={t("createTicket")}
-                title={t("createTicket")}
-                type="button"
-                onClick={() => {
-                  if (!settings) {
-                    setViewState("settings");
-                    return;
-                  }
-
-                  setShowCreateTicketDialog(true);
-                  setError(null);
-                }}
-              >
-                <PlusIcon />
-              </button>
-              <button
-                aria-label={t("refreshTickets")}
-                title={t("refreshTickets")}
-                type="button"
-                onClick={() => {
-                  if (!settings) {
-                    setViewState("settings");
-                    return;
-                  }
-
-                  void refreshTickets(settings);
-                }}
-              >
-                <RefreshIcon />
-              </button>
-              <button
-                aria-label={t("showSettings")}
-                title={t("showSettings")}
-                type="button"
-                onClick={() => setViewState("settings")}
-              >
-                <SettingsIcon />
-              </button>
-              <button
-                aria-pressed={pinned}
-                aria-label={pinned ? t("unpinPanel") : t("pinPanel")}
-                className={pinned ? "is-active" : undefined}
-                title={pinned ? t("unpinPanel") : t("pinPanel")}
-                type="button"
-                onClick={() => setPinned((nextPinned) => !nextPinned)}
-              >
-                <PinIcon />
-              </button>
-            </div>
           </header>
 
           {visibleError ? <div className="error-banner">{visibleError}</div> : null}
@@ -653,50 +808,104 @@ export function App() {
                 />
               </label>
               <div className="create-ticket-grid">
-                <label className="comment-dialog-field">
-                  <span>{t("projectId")}</span>
+                <label
+                  className="comment-dialog-field create-ticket-project-field"
+                  ref={newTicketProjectFieldRef}
+                >
+                  <span>{t("project")}</span>
                   <input
-                    aria-label={t("projectId")}
-                    inputMode="numeric"
-                    onChange={(event) => setNewTicketProjectId(event.target.value)}
-                    value={newTicketProjectId}
+                    aria-controls="new-ticket-project-options"
+                    aria-expanded={showNewTicketProjectOptions}
+                    aria-haspopup="listbox"
+                    aria-label={t("project")}
+                    autoComplete="off"
+                    role="combobox"
+                    onChange={(event) => handleSearchNewTicketProject(event.target.value)}
+                    onFocus={() => setShowNewTicketProjectOptions(true)}
+                    value={newTicketProjectSearch}
                   />
+                  {showNewTicketProjectOptions && filteredProjects.length > 0 ? (
+                    <div
+                      className="create-ticket-project-options"
+                      id="new-ticket-project-options"
+                      role="listbox"
+                    >
+                      {filteredProjects.map((project) => (
+                        <button
+                          key={project.id}
+                          role="option"
+                          type="button"
+                          onClick={() => handleSelectNewTicketProject(project)}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            handleSelectNewTicketProject(project);
+                          }}
+                        >
+                          {project.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </label>
                 <label className="comment-dialog-field">
-                  <span>{t("trackerId")}</span>
-                  <input
-                    aria-label={t("trackerId")}
-                    inputMode="numeric"
+                  <span>{t("tracker")}</span>
+                  <select
+                    aria-label={t("tracker")}
                     onChange={(event) => setNewTicketTrackerId(event.target.value)}
                     value={newTicketTrackerId}
-                  />
+                  >
+                    <option value="">{t("chooseOption")}</option>
+                    {trackers.map((tracker) => (
+                      <option key={tracker.id} value={tracker.id}>
+                        {tracker.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="comment-dialog-field">
-                  <span>{t("priorityId")}</span>
-                  <input
-                    aria-label={t("priorityId")}
-                    inputMode="numeric"
+                  <span>{t("priority")}</span>
+                  <select
+                    aria-label={t("priority")}
                     onChange={(event) => setNewTicketPriorityId(event.target.value)}
                     value={newTicketPriorityId}
-                  />
+                  >
+                    <option value="">{t("noAssignment")}</option>
+                    {issuePriorities.map((priority) => (
+                      <option key={priority.id} value={priority.id}>
+                        {priority.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="comment-dialog-field">
-                  <span>{t("statusId")}</span>
-                  <input
-                    aria-label={t("statusId")}
-                    inputMode="numeric"
+                  <span>{t("status")}</span>
+                  <select
+                    aria-label={t("status")}
                     onChange={(event) => setNewTicketStatusId(event.target.value)}
                     value={newTicketStatusId}
-                  />
+                  >
+                    <option value="">{t("noAssignment")}</option>
+                    {issueStatuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="comment-dialog-field">
-                  <span>{t("assignedToId")}</span>
-                  <input
-                    aria-label={t("assignedToId")}
-                    inputMode="numeric"
+                  <span>{t("assignTo")}</span>
+                  <select
+                    aria-label={t("assignTo")}
                     onChange={(event) => setNewTicketAssignedToId(event.target.value)}
                     value={newTicketAssignedToId}
-                  />
+                  >
+                    <option value="">{t("noAssignment")}</option>
+                    {newTicketAssignableUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <label className="comment-dialog-field">

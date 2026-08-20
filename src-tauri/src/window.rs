@@ -4,7 +4,7 @@ use tauri::{AppHandle, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 use crate::settings::{DockSide, PanelSettings};
 
 const EXPANDED_WIDTH: f64 = 360.0;
-const COLLAPSED_HOTSPOT_WIDTH: f64 = 8.0;
+const COLLAPSED_WIDTH: f64 = 48.0;
 
 pub fn docked_window_position(
     monitor_x: f64,
@@ -50,6 +50,7 @@ pub fn collapsed_window_frame(
     monitor_size: (f64, f64),
     work_area_position: (f64, f64),
     work_area_size: (f64, f64),
+    window_width: f64,
     dock_side: DockSide,
 ) -> (f64, f64, f64, f64) {
     let (monitor_x, _) = monitor_position;
@@ -58,14 +59,20 @@ pub fn collapsed_window_frame(
     let (_, work_area_height) = work_area_size;
     let x = match dock_side {
         DockSide::Left => monitor_x,
-        DockSide::Right => monitor_x + monitor_width - COLLAPSED_HOTSPOT_WIDTH,
+        DockSide::Right => monitor_x + monitor_width - window_width,
     };
 
-    (x, work_area_y, COLLAPSED_HOTSPOT_WIDTH, work_area_height)
+    (x, work_area_y, window_width, work_area_height)
 }
 
 fn scaled_dimension(logical_dimension: f64, scale: f64) -> u32 {
     (logical_dimension * scale).round() as u32
+}
+
+fn remove_window_shadow(window: &WebviewWindow) -> Result<(), String> {
+    window
+        .set_shadow(false)
+        .map_err(|_| "Could not remove panel shadow".to_string())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -190,6 +197,7 @@ pub fn dock_webview_window(window: &WebviewWindow, settings: PanelSettings) -> R
     window
         .set_always_on_top(true)
         .map_err(|_| "Could not keep panel on top".to_string())?;
+    remove_window_shadow(window)?;
     window
         .set_size(PhysicalSize::new(
             width.round() as u32,
@@ -228,17 +236,21 @@ pub fn collapse_window(
     let work_area = monitor.work_area();
     let size = work_area.size;
     let position = work_area.position;
+    let scale = monitor.scale_factor();
+    let physical_window_width = scaled_dimension(COLLAPSED_WIDTH, scale) as f64;
     let (x, y, width, height) = collapsed_window_frame(
         (monitor_position.x as f64, monitor_position.y as f64),
         (monitor_size.width as f64, monitor_size.height as f64),
         (position.x as f64, position.y as f64),
         (size.width as f64, size.height as f64),
+        physical_window_width,
         settings.dock_side,
     );
 
     window
         .set_always_on_top(true)
         .map_err(|_| "Could not keep panel on top".to_string())?;
+    remove_window_shadow(&window)?;
     window
         .set_size(PhysicalSize::new(
             width.round() as u32,
@@ -327,10 +339,11 @@ mod tests {
             (1920.0, 1080.0),
             (8.0, 0.0),
             (1904.0, 1040.0),
+            48.0,
             DockSide::Left,
         );
 
-        assert_eq!(position, (0.0, 0.0, 8.0, 1040.0));
+        assert_eq!(position, (0.0, 0.0, 48.0, 1040.0));
     }
 
     #[test]
@@ -340,14 +353,20 @@ mod tests {
             (1920.0, 1080.0),
             (0.0, 0.0),
             (1920.0, 1040.0),
+            48.0,
             DockSide::Right,
         );
 
-        assert_eq!(position, (1912.0, 0.0, 8.0, 1040.0));
+        assert_eq!(position, (1872.0, 0.0, 48.0, 1040.0));
     }
 
     #[test]
     fn scales_logical_panel_width_to_physical_pixels() {
         assert_eq!(scaled_dimension(EXPANDED_WIDTH, 1.25), 450);
+    }
+
+    #[test]
+    fn scales_logical_collapsed_width_to_physical_pixels() {
+        assert_eq!(scaled_dimension(COLLAPSED_WIDTH, 1.25), 60);
     }
 }

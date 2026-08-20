@@ -10,6 +10,7 @@ export type TranslationKey =
   | "collapsePanel"
   | "comment"
   | "createTicket"
+  | "chooseOption"
   | "description"
   | "errorPrefix"
   | "expandPanel"
@@ -26,6 +27,7 @@ export type TranslationKey =
   | "pinPanel"
   | "project"
   | "projectId"
+  | "priority"
   | "priorityId"
   | "redmineUrl"
   | "refreshInterval"
@@ -55,6 +57,7 @@ export type TranslationKey =
   | "ticketNotificationSound"
   | "ticketTitle"
   | "title"
+  | "tracker"
   | "trackerId"
   | "unpinPanel";
 
@@ -69,6 +72,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     collapsePanel: "Panel einklappen",
     comment: "Kommentar",
     createTicket: "Ticket erstellen",
+    chooseOption: "Bitte wählen",
     description: "Beschreibung",
     errorPrefix: "Redmine-Fehler",
     expandPanel: "Panel ausklappen",
@@ -85,6 +89,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     pinPanel: "Panel anheften",
     project: "Projekt",
     projectId: "Projekt-ID",
+    priority: "Priorit\u00e4t",
     priorityId: "Priorit\u00e4t-ID",
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
@@ -114,6 +119,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationSound: "Ticketton",
     ticketTitle: "Titel",
     title: "Redmine Tickets",
+    tracker: "Tracker",
     trackerId: "Tracker-ID",
     unpinPanel: "Panel l\u00f6sen"
   },
@@ -127,6 +133,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     collapsePanel: "Collapse panel",
     comment: "Comment",
     createTicket: "Create ticket",
+    chooseOption: "Choose",
     description: "Description",
     errorPrefix: "Redmine error",
     expandPanel: "Expand panel",
@@ -143,6 +150,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     pinPanel: "Pin panel",
     project: "Project",
     projectId: "Project ID",
+    priority: "Priority",
     priorityId: "Priority ID",
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
@@ -172,6 +180,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationSound: "Ticket sound",
     ticketTitle: "Title",
     title: "Redmine Tickets",
+    tracker: "Tracker",
     trackerId: "Tracker ID",
     unpinPanel: "Unpin panel"
   }
@@ -186,6 +195,7 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Could not keep panel on top": "Panel konnte nicht im Vordergrund gehalten werden",
     "Could not open ticket in browser": "Ticket konnte nicht im Browser ge\u00f6ffnet werden",
     "Could not parse settings": "Einstellungen konnten nicht gelesen werden",
+    "Could not remove panel shadow": "Panel-Schatten konnte nicht entfernt werden",
     "Could not position collapsed panel":
       "Eingeklapptes Panel konnte nicht positioniert werden",
     "Could not position panel": "Panel konnte nicht positioniert werden",

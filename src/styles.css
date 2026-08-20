@@ -1,9 +1,17 @@
 :root {
   color: #1b1f24;
-  background: #f6f7f9;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
 }
 
 * {
@@ -11,7 +19,6 @@
 }
 
 body {
-  margin: 0;
   min-width: 100vw;
   min-height: 100vh;
   overflow: hidden;
@@ -34,25 +41,87 @@ textarea {
 }
 
 .app-shell-collapsed {
+  justify-content: flex-start;
   background: transparent;
   border: 0;
   box-shadow: none;
   cursor: pointer;
 }
 
+.collapsed-panel-handle {
+  --collapsed-edge-width: 2px;
+  position: relative;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  background: transparent;
+}
+
+.collapsed-panel-handle::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--collapsed-edge-width);
+  background: #1457a8;
+  content: "";
+}
+
+.app-shell-left .collapsed-panel-handle::before {
+  left: 0;
+}
+
+.app-shell-right .collapsed-panel-handle::before {
+  right: 0;
+}
+
+.collapsed-ticket-badge {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  background: #1457a8;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  padding: 0 8px;
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+.app-shell-left .collapsed-ticket-badge {
+  left: var(--collapsed-edge-width);
+  border-radius: 0 999px 999px 0;
+}
+
+.app-shell-right .collapsed-ticket-badge {
+  right: var(--collapsed-edge-width);
+  border-radius: 999px 0 0 999px;
+}
+
 .panel-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 64px;
-  padding: 12px 14px;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 96px;
+  padding: 11px 12px 12px;
   border-bottom: 1px solid #d9dee7;
   background: #ffffff;
 }
 
-.panel-header > div:first-child {
-  min-width: 92px;
+.panel-header-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.panel-title-block {
+  min-width: 0;
 }
 
 .panel-header h1 {
@@ -71,33 +140,36 @@ textarea {
 .header-actions {
   display: flex;
   flex-shrink: 0;
-  gap: 6px;
+  gap: 5px;
 }
 
 .ticket-number-form {
-  display: flex;
-  min-width: 84px;
-  max-width: 112px;
-  flex: 1;
-  flex-direction: column;
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 4px;
   color: #697282;
   font-size: 11px;
 }
 
+.ticket-number-form span {
+  min-width: 76px;
+}
+
 .ticket-number-form input {
   width: 100%;
-  height: 32px;
+  height: 34px;
   border: 1px solid #cbd3df;
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 6px 10px;
 }
 
 .header-actions button {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: 1px solid #cbd3df;
   border-radius: 6px;
   background: #ffffff;
@@ -226,12 +298,22 @@ textarea {
   padding: 8px 10px;
 }
 
-.create-ticket-dialog input {
+.create-ticket-dialog input,
+.create-ticket-dialog select {
   width: 100%;
   height: 36px;
   border: 1px solid #cbd3df;
   border-radius: 6px;
+  background: #ffffff;
   padding: 7px 9px;
+}
+
+.create-ticket-dialog input:focus,
+.create-ticket-dialog select:focus,
+.create-ticket-dialog textarea:focus {
+  outline: 2px solid #b9d6f4;
+  outline-offset: 1px;
+  border-color: #2f6fb2;
 }
 
 .create-ticket-grid {
@@ -255,6 +337,52 @@ textarea {
   border-radius: 6px;
   background: #ffffff;
   padding: 7px 9px;
+}
+
+.create-ticket-project-field {
+  position: relative;
+}
+
+.create-ticket-project-field:focus-within > span {
+  color: #1457a8;
+}
+
+.create-ticket-project-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  max-height: 210px;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgb(18 30 48 / 16%);
+  padding: 4px;
+}
+
+.create-ticket-project-options button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #1b1f24;
+  cursor: pointer;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.create-ticket-project-options button:hover {
+  background: #eef4fb;
+}
+
+.create-ticket-project-options button:focus-visible {
+  outline: 2px solid #b9d6f4;
+  outline-offset: 1px;
+  background: #eef4fb;
 }
 
 .comment-dialog-empty {
@@ -556,5 +684,11 @@ textarea {
 
 .app-shell-left {
   border-right: 1px solid #d9dee7;
+  border-left: 0;
+}
+
+.app-shell-collapsed.app-shell-left,
+.app-shell-collapsed.app-shell-right {
+  border-right: 0;
   border-left: 0;
 }

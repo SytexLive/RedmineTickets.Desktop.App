@@ -84,9 +84,16 @@ Build the Windows NSIS setup installer:
 npm run tauri build -- --bundles nsis
 ```
 
-When providing a Windows release build, include both the built application EXE
-and a Windows installer, preferably the NSIS `*-setup.exe` generated under
-`src-tauri/target/release/bundle/nsis/`.
+Build and package a Windows release:
+
+```bash
+npm run release
+```
+
+The release command builds the app, creates the NSIS installer, and writes a
+versioned output folder under `release/`, for example
+`release/Redmine Tickets 0.2.0/`. Include the portable app EXE, setup EXE, and
+`SHA256SUMS.txt` from that folder when publishing a release.
 
 ## Branching
 

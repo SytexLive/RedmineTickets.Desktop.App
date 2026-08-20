@@ -49,6 +49,27 @@ pub struct IssueStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct RedmineProject {
+    pub id: u64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RedmineTracker {
+    pub id: u64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct IssuePriority {
+    pub id: u64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RedmineUser {
     pub id: u64,
     pub name: String,
@@ -69,6 +90,24 @@ pub struct NewTicket {
 #[derive(Debug, Deserialize)]
 struct IssueStatusesResponse {
     issue_statuses: Vec<IssueStatus>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProjectsResponse {
+    projects: Vec<RedmineProject>,
+    total_count: u64,
+    offset: u64,
+    limit: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct TrackersResponse {
+    trackers: Vec<RedmineTracker>,
+}
+
+#[derive(Debug, Deserialize)]
+struct IssuePrioritiesResponse {
+    issue_priorities: Vec<IssuePriority>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -138,6 +177,28 @@ pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
 
 pub fn issue_create_url(base_url: &str) -> String {
     format!("{}/issues.json", base_url.trim_end_matches('/'))
+}
+
+pub fn projects_url(base_url: &str, offset: u64) -> String {
+    format!(
+        "{}/projects.json?limit=100&offset={offset}",
+        base_url.trim_end_matches('/')
+    )
+}
+
+fn has_more_project_pages(response: &ProjectsResponse) -> bool {
+    response.offset + response.limit < response.total_count
+}
+
+pub fn trackers_url(base_url: &str) -> String {
+    format!("{}/trackers.json", base_url.trim_end_matches('/'))
+}
+
+pub fn issue_priorities_url(base_url: &str) -> String {
+    format!(
+        "{}/enumerations/issue_priorities.json",
+        base_url.trim_end_matches('/')
+    )
 }
 
 pub fn project_memberships_url(base_url: &str, project_id: u64) -> String {
@@ -275,6 +336,85 @@ pub async fn fetch_issue_statuses(settings: RedmineSettings) -> Result<Vec<Issue
         .map_err(|_| "Redmine returned an unexpected response".to_string())?;
 
     Ok(parsed.issue_statuses)
+}
+
+#[tauri::command]
+pub async fn fetch_projects(settings: RedmineSettings) -> Result<Vec<RedmineProject>, String> {
+    settings.validate()?;
+
+    let client = redmine_client();
+    let mut offset = 0;
+    let mut projects = Vec::new();
+
+    loop {
+        let response = client
+            .get(projects_url(&settings.base_url, offset))
+            .header("X-Redmine-API-Key", &settings.api_key)
+            .send()
+            .await
+            .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+
+        map_redmine_response_status(response.status())?;
+
+        let parsed = response
+            .json::<ProjectsResponse>()
+            .await
+            .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+        offset = parsed.offset + parsed.limit;
+        let has_more_pages = has_more_project_pages(&parsed);
+        projects.extend(parsed.projects);
+
+        if !has_more_pages {
+            break;
+        }
+    }
+
+    Ok(projects)
+}
+
+#[tauri::command]
+pub async fn fetch_trackers(settings: RedmineSettings) -> Result<Vec<RedmineTracker>, String> {
+    settings.validate()?;
+
+    let response = redmine_client()
+        .get(trackers_url(&settings.base_url))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .send()
+        .await
+        .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+
+    map_redmine_response_status(response.status())?;
+
+    let parsed = response
+        .json::<TrackersResponse>()
+        .await
+        .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+    Ok(parsed.trackers)
+}
+
+#[tauri::command]
+pub async fn fetch_issue_priorities(
+    settings: RedmineSettings,
+) -> Result<Vec<IssuePriority>, String> {
+    settings.validate()?;
+
+    let response = redmine_client()
+        .get(issue_priorities_url(&settings.base_url))
+        .header("X-Redmine-API-Key", settings.api_key)
+        .send()
+        .await
+        .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+
+    map_redmine_response_status(response.status())?;
+
+    let parsed = response
+        .json::<IssuePrioritiesResponse>()
+        .await
+        .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+    Ok(parsed.issue_priorities)
 }
 
 #[tauri::command]
@@ -439,6 +579,54 @@ mod tests {
         assert_eq!(
             issue_create_url("https://redmine.example.com/"),
             "https://redmine.example.com/issues.json"
+        );
+    }
+
+    #[test]
+    fn builds_projects_url() {
+        assert_eq!(
+            projects_url("https://redmine.example.com/", 100),
+            "https://redmine.example.com/projects.json?limit=100&offset=100"
+        );
+    }
+
+    #[test]
+    fn detects_more_project_pages() {
+        let response = ProjectsResponse {
+            projects: vec![RedmineProject {
+                id: 112,
+                name: "Stadtwerke Borken/Westf. GmbH".to_string(),
+            }],
+            total_count: 125,
+            offset: 100,
+            limit: 100,
+        };
+
+        assert!(!has_more_project_pages(&response));
+
+        let first_page = ProjectsResponse {
+            projects: vec![],
+            total_count: 125,
+            offset: 0,
+            limit: 100,
+        };
+
+        assert!(has_more_project_pages(&first_page));
+    }
+
+    #[test]
+    fn builds_trackers_url() {
+        assert_eq!(
+            trackers_url("https://redmine.example.com/"),
+            "https://redmine.example.com/trackers.json"
+        );
+    }
+
+    #[test]
+    fn builds_issue_priorities_url() {
+        assert_eq!(
+            issue_priorities_url("https://redmine.example.com/"),
+            "https://redmine.example.com/enumerations/issue_priorities.json"
         );
     }
 

@@ -61,6 +61,9 @@ function mockTicketApp({
     if (command === "save_ticket_state") return Promise.resolve();
     if (command === "load_settings") return Promise.resolve(settings);
     if (command === "fetch_issue_statuses") return Promise.resolve([]);
+    if (command === "fetch_projects") return Promise.resolve([]);
+    if (command === "fetch_trackers") return Promise.resolve([]);
+    if (command === "fetch_issue_priorities") return Promise.resolve([]);
     if (command === "fetch_tickets") {
       const batch = ticketBatches[Math.min(fetchCount, ticketBatches.length - 1)];
       fetchCount += 1;
@@ -78,6 +81,7 @@ describe("App", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    window.localStorage.clear();
     invokeMock.mockReset();
   });
 
@@ -327,9 +331,34 @@ describe("App", () => {
     });
   });
 
-  it("creates a ticket from the new-ticket dialog", async () => {
-    mockTicketApp({
-      ticketBatches: [[ticketFixture(42, "Existing ticket")]]
+  it("creates a ticket from named options in the new-ticket dialog", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") {
+        return Promise.resolve([{ id: 4, name: "Normal" }]);
+      }
+      if (command === "fetch_issue_statuses") {
+        return Promise.resolve([{ id: 1, name: "Neu" }]);
+      }
+      if (command === "fetch_assignable_users") {
+        return Promise.resolve([{ id: 7, name: "Max Mustermann" }]);
+      }
+      return Promise.resolve(args);
     });
 
     render(<App />);
@@ -339,19 +368,19 @@ describe("App", () => {
     fireEvent.change(within(dialog).getByLabelText("Titel"), {
       target: { value: "Neues Seitenpanel bauen" }
     });
-    fireEvent.change(within(dialog).getByLabelText("Projekt-ID"), {
-      target: { value: "12" }
-    });
-    fireEvent.change(within(dialog).getByLabelText("Tracker-ID"), {
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    await within(dialog).findByRole("option", { name: "Max Mustermann" });
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
       target: { value: "2" }
     });
-    fireEvent.change(within(dialog).getByLabelText("Priorit\u00e4t-ID"), {
+    fireEvent.change(within(dialog).getByLabelText("Priorit\u00e4t"), {
       target: { value: "4" }
     });
-    fireEvent.change(within(dialog).getByLabelText("Status-ID"), {
+    fireEvent.change(within(dialog).getByLabelText("Status"), {
       target: { value: "1" }
     });
-    fireEvent.change(within(dialog).getByLabelText("Zuweisung-ID"), {
+    fireEvent.change(within(dialog).getByLabelText("Zuweisen an"), {
       target: { value: "7" }
     });
     fireEvent.change(within(dialog).getByLabelText("Beschreibung"), {
@@ -372,7 +401,144 @@ describe("App", () => {
           description: "Bitte als Docking-Feature umsetzen."
         }
       });
+      expect(invokeMock).toHaveBeenCalledWith("fetch_assignable_users", {
+        settings: settingsFixture(),
+        projectId: 12
+      });
       expect(screen.queryByRole("dialog", { name: "Ticket erstellen" })).toBeNull();
+    });
+  });
+
+  it("uses the Redmine status named Neu as the default create status", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") {
+        return Promise.resolve([{ id: 4, name: "Normal" }]);
+      }
+      if (command === "fetch_issue_statuses") {
+        return Promise.resolve([
+          { id: 1, name: "Neu" },
+          { id: 3, name: "In Arbeit" }
+        ]);
+      }
+      if (command === "fetch_assignable_users") {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Standardstatus testen" }
+    });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
+      target: { value: "2" }
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("create_ticket", {
+        settings: settingsFixture(),
+        ticket: expect.objectContaining({
+          statusId: 1
+        })
+      });
+    });
+  });
+
+  it("filters project options inside the project dropdown", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([
+          { id: 12, name: "Desktop App" },
+          { id: 18, name: "Internal Tools" }
+        ]);
+      }
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    expect(within(dialog).queryByLabelText("Projekt filtern")).toBeNull();
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    expect(await within(dialog).findByRole("option", { name: "Desktop App" })).toBeTruthy();
+    expect(within(dialog).getByRole("option", { name: "Internal Tools" })).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("Projekt"), {
+      target: { value: "desk" }
+    });
+
+    expect(within(dialog).getByRole("option", { name: "Desktop App" })).toBeTruthy();
+    expect(within(dialog).queryByRole("option", { name: "Internal Tools" })).toBeNull();
+  });
+
+  it("closes the project options when clicking outside the project dropdown", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    expect(await within(dialog).findByRole("option", { name: "Desktop App" })).toBeTruthy();
+
+    fireEvent.mouseDown(within(dialog).getByLabelText("Titel"));
+
+    await waitFor(() => {
+      expect(within(dialog).queryByRole("option", { name: "Desktop App" })).toBeNull();
     });
   });
 
@@ -759,6 +925,48 @@ describe("App", () => {
     expect(screen.getByText("Pinned ticket")).toBeInTheDocument();
   });
 
+  it("restores the pinned panel state after reopening the app", async () => {
+    window.localStorage.setItem("redmineTicketsPanelPinned", "true");
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Restored pinned ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Restored pinned ticket")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Panel l\u00f6sen" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    vi.useFakeTimers();
+    fireEvent.mouseLeave(screen.getByRole("main"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(invokeMock.mock.calls.some(([command]) => command === "collapse_window")).toBe(false);
+    expect(screen.getByText("Restored pinned ticket")).toBeInTheDocument();
+  });
+
+  it("saves the pinned panel state when the pin button changes", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Save pinned ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Save pinned ticket")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Panel anheften" }));
+
+    expect(window.localStorage.getItem("redmineTicketsPanelPinned")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel l\u00f6sen" }));
+
+    expect(window.localStorage.getItem("redmineTicketsPanelPinned")).toBe("false");
+  });
+
   it("does not show manual collapse or expand icon controls", async () => {
     mockTicketApp({
       ticketBatches: [[ticketFixture(42, "Persistent panel ticket")]]
@@ -777,5 +985,29 @@ describe("App", () => {
     });
 
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("shows the open ticket count badge while collapsed", async () => {
+    mockTicketApp({
+      ticketBatches: [[
+        ticketFixture(42, "First open ticket"),
+        ticketFixture(43, "Second open ticket")
+      ]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("First open ticket")).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    fireEvent.mouseLeave(screen.getByRole("main"));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+
+    expect(screen.getByLabelText("2 offen")).toHaveClass("collapsed-panel-handle");
+    expect(screen.getByText("2")).toHaveClass("collapsed-ticket-badge");
+    expect(screen.queryByText("First open ticket")).toBeNull();
   });
 });

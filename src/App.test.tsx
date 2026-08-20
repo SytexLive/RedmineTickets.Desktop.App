@@ -27,6 +27,8 @@ function ticketFixture(id: number, subject: string) {
     project: "Desktop",
     projectId: 12,
     tracker: "Bug",
+    assignee: "Max Mustermann",
+    assigneeId: 7,
     updatedAt: "2026-08-10T08:00:00Z",
     url: `https://redmine.example.com/issues/${id}`
   };
@@ -42,6 +44,15 @@ function installAudioMock() {
   });
   vi.stubGlobal("Audio", constructorMock);
   return { constructorMock, playMock };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return { promise, resolve };
 }
 
 function mockTicketApp({
@@ -83,6 +94,47 @@ describe("App", () => {
     vi.unstubAllGlobals();
     window.localStorage.clear();
     invokeMock.mockReset();
+  });
+
+  it("does not dock with default settings before saved settings are loaded", async () => {
+    const settingsLoad = deferred<ReturnType<typeof settingsFixture>>();
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return settingsLoad.promise;
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Loaded ticket")]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("load_settings");
+    });
+    expect(invokeMock.mock.calls.some(([command]) => command === "dock_window")).toBe(false);
+
+    await act(async () => {
+      settingsLoad.resolve(settingsFixture());
+    });
+
+    await screen.findByText("Loaded ticket");
+
+    expect(invokeMock).toHaveBeenCalledWith("dock_window", {
+      settings: {
+        monitorIndex: 0,
+        dockSide: "right"
+      }
+    });
   });
 
   it("loads saved settings only once when the initial ticket refresh fails", async () => {
@@ -328,6 +380,212 @@ describe("App", () => {
       expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
         url: "https://redmine.example.com/issues/12345"
       });
+    });
+  });
+
+  it("switches between bottom ticket tabs and loads the selected Redmine ticket view", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") {
+        return Promise.resolve([ticketFixture(42, "Watched ticket")]);
+      }
+      if (command === "fetch_created_open_tickets") {
+        return Promise.resolve([ticketFixture(43, "Created ticket")]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Assigned ticket")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Meine offenen Tickets" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Beobachtete Tickets" }));
+
+    expect(await screen.findByText("Watched ticket")).toBeInTheDocument();
+    expect(invokeMock).toHaveBeenCalledWith("fetch_watched_open_tickets", {
+      settings: settingsFixture()
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Erstellte Tickets" }));
+
+    expect(await screen.findByText("Created ticket")).toBeInTheDocument();
+    expect(invokeMock).toHaveBeenCalledWith("fetch_created_open_tickets", {
+      settings: settingsFixture()
+    });
+  });
+
+  it("shows users sorted by their number of open tickets in the bottom users tab", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_open_tickets") {
+        return Promise.resolve([
+          ticketFixture(1, "First Mina ticket"),
+          ticketFixture(2, "Alex ticket"),
+          ticketFixture(3, "Second Mina ticket"),
+          { ...ticketFixture(4, "Unassigned ticket"), assignee: undefined, assigneeId: undefined }
+        ].map((ticket) =>
+          ticket.id === 2
+            ? { ...ticket, assignee: "Alex Adler", assigneeId: 4 }
+            : ticket.id === 4
+              ? ticket
+              : { ...ticket, assignee: "Mina Meyer", assigneeId: 7 }
+        ));
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+        "Mina Meyer2",
+        "Alex Adler1",
+        "Nicht zugewiesen1"
+      ]);
+    });
+    expect(invokeMock).toHaveBeenCalledWith("fetch_open_tickets", {
+      settings: settingsFixture()
+    });
+  });
+
+  it("opens the Redmine open-ticket list for a clicked assignee summary row", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_open_tickets") {
+        return Promise.resolve([
+          { ...ticketFixture(1, "Mina ticket"), assignee: "Mina Meyer", assigneeId: 7 }
+        ]);
+      }
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mina Meyer 1 offene Tickets" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+        url: "https://redmine.example.com/issues?status_id=open&assigned_to_id=7"
+      });
+    });
+  });
+
+  it("keeps cached user counts visible while refreshing the users tab in the background", async () => {
+    installAudioMock();
+    const usersRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    let userFetchCount = 0;
+
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") {
+        return Promise.resolve([ticketFixture(42, "Watched ticket")]);
+      }
+      if (command === "fetch_open_tickets") {
+        userFetchCount += 1;
+        if (userFetchCount === 1) {
+          return Promise.resolve([
+            { ...ticketFixture(1, "First Mina ticket"), assignee: "Mina Meyer" },
+            { ...ticketFixture(2, "Second Mina ticket"), assignee: "Mina Meyer" }
+          ]);
+        }
+
+        return usersRefresh.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+        "Mina Meyer2"
+      ]);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Beobachtete Tickets" }));
+    expect(await screen.findByText("Watched ticket")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+
+    expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+      "Mina Meyer2"
+    ]);
+    expect(userFetchCount).toBe(2);
+
+    await act(async () => {
+      usersRefresh.resolve([
+        { ...ticketFixture(3, "Alex ticket"), assignee: "Alex Adler" }
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+        "Alex Adler1"
+      ]);
     });
   });
 

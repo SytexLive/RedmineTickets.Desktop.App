@@ -12,6 +12,8 @@ pub struct Ticket {
     pub project: String,
     pub project_id: u64,
     pub tracker: String,
+    pub assignee: Option<String>,
+    pub assignee_id: Option<u64>,
     pub created_at: String,
     pub updated_at: String,
     pub url: String,
@@ -31,13 +33,26 @@ pub struct RedmineIssue {
     pub priority: NamedValue,
     pub project: NamedValue,
     pub tracker: NamedValue,
+    #[serde(default)]
+    pub assigned_to: Option<NamedValue>,
     pub created_on: String,
     pub updated_on: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TicketFilter {
+    AssignedToMe,
+    WatchedByMe,
+    CreatedByMe,
+    AllOpen,
 }
 
 #[derive(Debug, Deserialize)]
 struct RedmineIssuesResponse {
     issues: Vec<RedmineIssue>,
+    total_count: u64,
+    offset: u64,
+    limit: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -194,10 +209,26 @@ pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
         project: issue.project.name,
         project_id: issue.project.id,
         tracker: issue.tracker.name,
+        assignee: issue.assigned_to.as_ref().map(|assignee| assignee.name.clone()),
+        assignee_id: issue.assigned_to.map(|assignee| assignee.id),
         created_at: issue.created_on,
         updated_at: issue.updated_on,
         url: format!("{base_url}/issues/{}", issue.id),
     }
+}
+
+pub fn open_tickets_url(base_url: &str, filter: TicketFilter, offset: u64) -> String {
+    let filter_query = match filter {
+        TicketFilter::AssignedToMe => "status_id=open&assigned_to_id=me",
+        TicketFilter::WatchedByMe => "status_id=open&watcher_id=me",
+        TicketFilter::CreatedByMe => "status_id=open&author_id=me",
+        TicketFilter::AllOpen => "status_id=open",
+    };
+
+    format!(
+        "{}/issues.json?{filter_query}&limit=100&offset={offset}",
+        base_url.trim_end_matches('/')
+    )
 }
 
 pub fn issue_update_url(base_url: &str, issue_id: u64) -> String {
@@ -225,6 +256,10 @@ pub fn projects_url(base_url: &str, offset: u64) -> String {
 }
 
 fn has_more_project_pages(response: &ProjectsResponse) -> bool {
+    response.offset + response.limit < response.total_count
+}
+
+fn has_more_issue_pages(response: &RedmineIssuesResponse) -> bool {
     response.offset + response.limit < response.total_count
 }
 
@@ -294,34 +329,73 @@ fn map_redmine_response_status(status: reqwest::StatusCode) -> Result<(), String
     Ok(())
 }
 
-#[tauri::command]
-pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+async fn fetch_open_tickets_with_filter(
+    settings: RedmineSettings,
+    filter: TicketFilter,
+) -> Result<Vec<Ticket>, String> {
     settings.validate()?;
 
-    let request_url = format!(
-        "{}/issues.json?assigned_to_id=me&status_id=open",
-        settings.base_url.trim_end_matches('/')
-    );
+    let client = redmine_client();
+    let mut offset = 0;
+    let mut tickets = Vec::new();
 
-    let response = redmine_client()
-        .get(request_url)
-        .header("X-Redmine-API-Key", settings.api_key)
-        .send()
-        .await
-        .map_err(|_| "Network failure while contacting Redmine".to_string())?;
+    loop {
+        let request_url = open_tickets_url(&settings.base_url, filter, offset);
 
-    map_redmine_response_status(response.status())?;
+        let response = client
+            .get(request_url)
+            .header("X-Redmine-API-Key", &settings.api_key)
+            .send()
+            .await
+            .map_err(|_| "Network failure while contacting Redmine".to_string())?;
 
-    let parsed = response
-        .json::<RedmineIssuesResponse>()
-        .await
-        .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+        map_redmine_response_status(response.status())?;
 
-    Ok(parsed
-        .issues
-        .into_iter()
-        .map(|issue| normalize_issue(&settings.base_url, issue))
-        .collect())
+        let parsed = response
+            .json::<RedmineIssuesResponse>()
+            .await
+            .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+        offset = parsed.offset + parsed.limit;
+        let has_more_pages = has_more_issue_pages(&parsed);
+        tickets.extend(
+            parsed
+                .issues
+                .into_iter()
+                .map(|issue| normalize_issue(&settings.base_url, issue)),
+        );
+
+        if !has_more_pages {
+            break;
+        }
+    }
+
+    Ok(tickets)
+}
+
+#[tauri::command]
+pub async fn fetch_my_open_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+    fetch_open_tickets_with_filter(settings, TicketFilter::AssignedToMe).await
+}
+
+#[tauri::command]
+pub async fn fetch_watched_open_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+    fetch_open_tickets_with_filter(settings, TicketFilter::WatchedByMe).await
+}
+
+#[tauri::command]
+pub async fn fetch_created_open_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+    fetch_open_tickets_with_filter(settings, TicketFilter::CreatedByMe).await
+}
+
+#[tauri::command]
+pub async fn fetch_open_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+    fetch_open_tickets_with_filter(settings, TicketFilter::AllOpen).await
+}
+
+#[tauri::command]
+pub async fn fetch_tickets(settings: RedmineSettings) -> Result<Vec<Ticket>, String> {
+    fetch_my_open_tickets(settings).await
 }
 
 #[tauri::command]
@@ -615,6 +689,7 @@ mod tests {
                 id: 2,
                 name: "Bug".to_string(),
             },
+            assigned_to: None,
             created_on: "2026-08-09T08:00:00Z".to_string(),
             updated_on: "2026-08-10T08:00:00Z".to_string(),
         };
@@ -633,6 +708,80 @@ mod tests {
             issue_update_url("https://redmine.example.com/", 42),
             "https://redmine.example.com/issues/42.json"
         );
+    }
+
+    #[test]
+    fn builds_open_ticket_urls_for_each_ticket_view() {
+        assert_eq!(
+            open_tickets_url("https://redmine.example.com/", TicketFilter::AssignedToMe, 0),
+            "https://redmine.example.com/issues.json?status_id=open&assigned_to_id=me&limit=100&offset=0"
+        );
+        assert_eq!(
+            open_tickets_url("https://redmine.example.com/", TicketFilter::WatchedByMe, 100),
+            "https://redmine.example.com/issues.json?status_id=open&watcher_id=me&limit=100&offset=100"
+        );
+        assert_eq!(
+            open_tickets_url("https://redmine.example.com/", TicketFilter::CreatedByMe, 200),
+            "https://redmine.example.com/issues.json?status_id=open&author_id=me&limit=100&offset=200"
+        );
+        assert_eq!(
+            open_tickets_url("https://redmine.example.com/", TicketFilter::AllOpen, 300),
+            "https://redmine.example.com/issues.json?status_id=open&limit=100&offset=300"
+        );
+    }
+
+    #[test]
+    fn detects_more_issue_pages() {
+        let first_page = RedmineIssuesResponse {
+            issues: vec![],
+            total_count: 250,
+            offset: 0,
+            limit: 100,
+        };
+        let last_page = RedmineIssuesResponse {
+            issues: vec![],
+            total_count: 250,
+            offset: 200,
+            limit: 100,
+        };
+
+        assert!(has_more_issue_pages(&first_page));
+        assert!(!has_more_issue_pages(&last_page));
+    }
+
+    #[test]
+    fn normalizes_optional_assignee_into_ticket() {
+        let issue = RedmineIssue {
+            id: 43,
+            subject: "Fix assignee summary".to_string(),
+            status: NamedValue {
+                id: 1,
+                name: "New".to_string(),
+            },
+            priority: NamedValue {
+                id: 4,
+                name: "Normal".to_string(),
+            },
+            project: NamedValue {
+                id: 12,
+                name: "Desktop".to_string(),
+            },
+            tracker: NamedValue {
+                id: 2,
+                name: "Bug".to_string(),
+            },
+            assigned_to: Some(NamedValue {
+                id: 7,
+                name: "Mina Meyer".to_string(),
+            }),
+            created_on: "2026-08-09T08:00:00Z".to_string(),
+            updated_on: "2026-08-10T08:00:00Z".to_string(),
+        };
+
+        let ticket = normalize_issue("https://redmine.example.com/", issue);
+
+        assert_eq!(ticket.assignee, Some("Mina Meyer".to_string()));
+        assert_eq!(ticket.assignee_id, Some(7));
     }
 
     #[test]

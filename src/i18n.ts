@@ -21,9 +21,12 @@ export type TranslationKey =
   | "descriptionQuote"
   | "errorPrefix"
   | "expandPanel"
+  | "createdTicketsTab"
   | "language"
   | "loading"
+  | "myOpenTicketsTab"
   | "monitor"
+  | "noOpenUsers"
   | "noOpenTickets"
   | "noAssignment"
   | "noStatusesLoaded"
@@ -66,7 +69,10 @@ export type TranslationKey =
   | "title"
   | "tracker"
   | "trackerId"
-  | "unpinPanel";
+  | "unassignedUser"
+  | "unpinPanel"
+  | "usersTab"
+  | "watchedTicketsTab";
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   de: {
@@ -90,9 +96,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     descriptionQuote: "Zitat",
     errorPrefix: "Redmine-Fehler",
     expandPanel: "Panel ausklappen",
+    createdTicketsTab: "Erstellte Tickets",
     language: "Sprache",
     loading: "L\u00e4dt",
+    myOpenTicketsTab: "Meine offenen Tickets",
     monitor: "Monitor",
+    noOpenUsers: "Keine offenen Tickets f\u00fcr Benutzer",
     noOpenTickets: "Keine offenen Tickets",
     noAssignment: "Nicht ändern",
     noStatusesLoaded: "Keine Status geladen",
@@ -135,7 +144,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     title: "Redmine Tickets",
     tracker: "Tracker",
     trackerId: "Tracker-ID",
-    unpinPanel: "Panel l\u00f6sen"
+    unassignedUser: "Nicht zugewiesen",
+    unpinPanel: "Panel l\u00f6sen",
+    usersTab: "Benutzer",
+    watchedTicketsTab: "Beobachtete Tickets"
   },
   en: {
     addComment: "Add comment",
@@ -158,9 +170,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     descriptionQuote: "Quote",
     errorPrefix: "Redmine error",
     expandPanel: "Expand panel",
+    createdTicketsTab: "Created tickets",
     language: "Language",
     loading: "Loading",
+    myOpenTicketsTab: "My open tickets",
     monitor: "Monitor",
+    noOpenUsers: "No open tickets for users",
     noOpenTickets: "No open tickets",
     noAssignment: "Do not change",
     noStatusesLoaded: "No statuses loaded",
@@ -203,7 +218,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     title: "Redmine Tickets",
     tracker: "Tracker",
     trackerId: "Tracker ID",
-    unpinPanel: "Unpin panel"
+    unassignedUser: "Unassigned",
+    unpinPanel: "Unpin panel",
+    usersTab: "Users",
+    watchedTicketsTab: "Watched tickets"
   }
 };
 

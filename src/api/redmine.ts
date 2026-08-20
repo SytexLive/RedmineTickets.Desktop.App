@@ -99,6 +99,22 @@ export function fetchTickets(settings: RedmineSettings): Promise<Ticket[]> {
   return invoke("fetch_tickets", { settings });
 }
 
+export function fetchMyOpenTickets(settings: RedmineSettings): Promise<Ticket[]> {
+  return invoke("fetch_my_open_tickets", { settings });
+}
+
+export function fetchWatchedOpenTickets(settings: RedmineSettings): Promise<Ticket[]> {
+  return invoke("fetch_watched_open_tickets", { settings });
+}
+
+export function fetchCreatedOpenTickets(settings: RedmineSettings): Promise<Ticket[]> {
+  return invoke("fetch_created_open_tickets", { settings });
+}
+
+export function fetchOpenTickets(settings: RedmineSettings): Promise<Ticket[]> {
+  return invoke("fetch_open_tickets", { settings });
+}
+
 export function createTicket(settings: RedmineSettings, ticket: NewTicket): Promise<void> {
   return invoke("create_ticket", { settings, ticket });
 }

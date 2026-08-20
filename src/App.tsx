@@ -7,11 +7,14 @@ import {
   dockWindow,
   expandWindow,
   fetchAssignableUsers,
+  fetchCreatedOpenTickets,
   fetchIssuePriorities,
   fetchIssueStatuses,
+  fetchOpenTickets,
   fetchProjects,
   fetchTickets,
   fetchTrackers,
+  fetchWatchedOpenTickets,
   type IssuePriority,
   listMonitors,
   type IssueStatus,
@@ -38,13 +41,22 @@ import {
   RefreshIcon,
   SettingsIcon
 } from "./components/icons";
-import { buildTicketUrl } from "./domain/ticket";
+import { buildTicketUrl, buildUserOpenTicketsUrl } from "./domain/ticket";
 import type { Ticket } from "./domain/ticket";
 import { applyTicketRefresh, markTicketRead } from "./domain/ticketNotifications";
+import { summarizeOpenTicketsByAssignee } from "./domain/ticketUsers";
 import { createTranslator, formatError, type Language } from "./i18n";
 import { playTicketNotificationSound } from "./notifications/sound";
 
 type ViewState = "loading" | "settings" | "tickets";
+type TicketTab = "my-open" | "watched" | "created" | "users";
+
+type TicketTabCacheEntry = {
+  tickets: Ticket[];
+  loadedAt: number | null;
+};
+
+type TicketTabCache = Record<TicketTab, TicketTabCacheEntry>;
 
 type TicketContextMenu = {
   ticket: Ticket;
@@ -53,6 +65,7 @@ type TicketContextMenu = {
 };
 
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
+const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
 
 function selectedOptionId(value: string) {
   return Number(value);
@@ -96,9 +109,42 @@ function savePinnedPanelState(pinned: boolean) {
   }
 }
 
+function fetchTicketsForTab(settings: RedmineSettings, tab: TicketTab) {
+  if (tab === "watched") {
+    return fetchWatchedOpenTickets(settings);
+  }
+
+  if (tab === "created") {
+    return fetchCreatedOpenTickets(settings);
+  }
+
+  if (tab === "users") {
+    return fetchOpenTickets(settings);
+  }
+
+  return fetchTickets(settings);
+}
+
+function createEmptyTicketTabCache(): TicketTabCache {
+  return {
+    "my-open": { tickets: [], loadedAt: null },
+    watched: { tickets: [], loadedAt: null },
+    created: { tickets: [], loadedAt: null },
+    users: { tickets: [], loadedAt: null }
+  };
+}
+
+function hasCachedTickets(cacheEntry: TicketTabCacheEntry) {
+  return cacheEntry.loadedAt !== null;
+}
+
 export function App() {
   const [settings, setSettings] = useState<RedmineSettings | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [activeTicketTab, setActiveTicketTab] = useState<TicketTab>("my-open");
+  const [ticketTabCache, setTicketTabCache] = useState<TicketTabCache>(
+    createEmptyTicketTabCache
+  );
   const [ticketState, setTicketState] = useState<TicketNotificationState>({
     knownTicketIds: [],
     unreadTicketIds: []
@@ -140,27 +186,45 @@ export function App() {
     knownTicketIds: [],
     unreadTicketIds: []
   });
+  const activeTicketTabRef = useRef<TicketTab>("my-open");
+  const ticketTabCacheRef = useRef<TicketTabCache>(createEmptyTicketTabCache());
   const hasInitializedTicketBaselineRef = useRef(false);
 
-  const refreshTickets = useCallback(async (nextSettings: RedmineSettings) => {
+  const refreshTickets = useCallback(async (
+    nextSettings: RedmineSettings,
+    ticketTab: TicketTab = activeTicketTab
+  ) => {
     try {
-      const loadedTickets = await fetchTickets(nextSettings);
-      setTickets(loadedTickets);
-      const result = applyTicketRefresh(
-        ticketStateRef.current,
-        loadedTickets.map((ticket) => ticket.id),
-        hasInitializedTicketBaselineRef.current
-      );
-      ticketStateRef.current = result.state;
-      hasInitializedTicketBaselineRef.current = result.initialized;
-      setTicketState(result.state);
-      void saveTicketState(result.state).catch(() => undefined);
-      if (result.newTicketIds.length > 0) {
-        playTicketNotificationSound({
-          enabled: nextSettings.ticketNotificationsEnabled,
-          volume: nextSettings.ticketNotificationVolume,
-          sound: nextSettings.ticketNotificationSound
-        });
+      const loadedTickets = await fetchTicketsForTab(nextSettings, ticketTab);
+      const nextCacheEntry = {
+        tickets: loadedTickets,
+        loadedAt: Date.now()
+      };
+      ticketTabCacheRef.current = {
+        ...ticketTabCacheRef.current,
+        [ticketTab]: nextCacheEntry
+      };
+      setTicketTabCache(ticketTabCacheRef.current);
+      if (activeTicketTabRef.current === ticketTab) {
+        setTickets(loadedTickets);
+      }
+      if (ticketTab === "my-open") {
+        const result = applyTicketRefresh(
+          ticketStateRef.current,
+          loadedTickets.map((ticket) => ticket.id),
+          hasInitializedTicketBaselineRef.current
+        );
+        ticketStateRef.current = result.state;
+        hasInitializedTicketBaselineRef.current = result.initialized;
+        setTicketState(result.state);
+        void saveTicketState(result.state).catch(() => undefined);
+        if (result.newTicketIds.length > 0) {
+          playTicketNotificationSound({
+            enabled: nextSettings.ticketNotificationsEnabled,
+            volume: nextSettings.ticketNotificationVolume,
+            sound: nextSettings.ticketNotificationSound
+          });
+        }
       }
       setError(null);
       setViewState("tickets");
@@ -168,7 +232,15 @@ export function App() {
       setError(err instanceof Error ? err.message : String(err));
       setViewState("tickets");
     }
-  }, []);
+  }, [activeTicketTab]);
+
+  const refreshTicketTabsInBackground = useCallback(async (
+    nextSettings: RedmineSettings
+  ) => {
+    await Promise.all(
+      TICKET_TABS.map((ticketTab) => refreshTickets(nextSettings, ticketTab))
+    );
+  }, [refreshTickets]);
 
   const refreshIssueStatuses = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -225,7 +297,6 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
-    dockWindow(null).catch(() => undefined);
     listMonitors()
       .then(setMonitors)
       .catch(() => setMonitors([]));
@@ -242,13 +313,14 @@ export function App() {
         setTicketState(loadedTicketState);
         setSettings(loadedSettings);
         if (!loadedSettings) {
+          void dockWindow(null);
           setViewState("settings");
           return;
         }
         void dockWindow(loadedSettings);
         void refreshIssueStatuses(loadedSettings);
         void refreshTicketCreateOptions(loadedSettings);
-        void refreshTickets(loadedSettings);
+        void refreshTickets(loadedSettings, "my-open");
       })
       .catch((err) => {
         if (cancelled) {
@@ -271,11 +343,11 @@ export function App() {
 
     const intervalMs = Math.max(settings.refreshIntervalSeconds, 15) * 1000;
     const intervalId = window.setInterval(() => {
-      void refreshTickets(settings);
+      void refreshTicketTabsInBackground(settings);
     }, intervalMs);
 
     return () => window.clearInterval(intervalId);
-  }, [refreshTickets, settings]);
+  }, [refreshTicketTabsInBackground, settings]);
 
   useEffect(() => {
     if (!ticketContextMenu) {
@@ -411,6 +483,19 @@ export function App() {
       setSelectedAssigneeId("");
       setCommentTicket(null);
       await refreshTickets(settings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleOpenAssigneeTickets(assigneeId: number) {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    try {
+      await openTicketUrl(buildUserOpenTicketsUrl(settings.baseUrl, assigneeId));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -603,6 +688,23 @@ export function App() {
     });
   }
 
+  function handleSelectTicketTab(ticketTab: TicketTab) {
+    activeTicketTabRef.current = ticketTab;
+    setActiveTicketTab(ticketTab);
+    const cachedTab = ticketTabCacheRef.current[ticketTab];
+
+    if (hasCachedTickets(cachedTab)) {
+      setTickets(cachedTab.tickets);
+      setViewState("tickets");
+    } else {
+      setTickets([]);
+    }
+
+    if (settings) {
+      void refreshTickets(settings, ticketTab);
+    }
+  }
+
   const showingSettings = viewState === "settings";
   const language: Language = settings?.language ?? "de";
   const t = createTranslator(language);
@@ -725,10 +827,12 @@ export function App() {
           ) : null}
 
           {viewState === "tickets" && tickets.length === 0 ? (
-            <div className="status-panel">{t("noOpenTickets")}</div>
+            <div className="status-panel">
+              {activeTicketTab === "users" ? t("noOpenUsers") : t("noOpenTickets")}
+            </div>
           ) : null}
 
-          {viewState === "tickets" && tickets.length > 0 ? (
+          {viewState === "tickets" && tickets.length > 0 && activeTicketTab !== "users" ? (
             <TicketList
               onOpenTicket={handleOpenTicket}
               onTicketContextMenu={(ticket, position) => {
@@ -745,6 +849,85 @@ export function App() {
               tickets={tickets}
               unreadTicketIds={ticketState.unreadTicketIds}
             />
+          ) : null}
+
+          {viewState === "tickets" && tickets.length > 0 && activeTicketTab === "users" ? (
+            <section className="user-ticket-summary-panel" aria-label={t("usersTab")}>
+              <ul className="user-ticket-summary-list">
+                {summarizeOpenTicketsByAssignee(tickets, t("unassignedUser")).map((user) => {
+                  const assigneeId = user.assigneeId;
+                  const rowContent = (
+                    <>
+                      <span>{user.assignee}</span>
+                      <strong>{user.openTicketCount}</strong>
+                    </>
+                  );
+
+                  return (
+                    <li className="user-ticket-summary-row" key={`${user.assigneeId ?? "none"}-${user.assignee}`}>
+                      {assigneeId ? (
+                        <button
+                          aria-label={`${user.assignee} ${user.openTicketCount} offene Tickets`}
+                          title={`${user.assignee} ${user.openTicketCount} offene Tickets`}
+                          type="button"
+                          onClick={() => {
+                            void handleOpenAssigneeTickets(assigneeId);
+                          }}
+                        >
+                          {rowContent}
+                        </button>
+                      ) : (
+                        rowContent
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {viewState === "tickets" ? (
+            <nav className="bottom-ticket-tabs" aria-label="Ticket views">
+              {[
+                {
+                  id: "my-open" as const,
+                  label: t("myOpenTicketsTab"),
+                  shortLabel: language === "de" ? "Meine" : "Mine",
+                  icon: "inbox"
+                },
+                {
+                  id: "watched" as const,
+                  label: t("watchedTicketsTab"),
+                  shortLabel: language === "de" ? "Beobachtet" : "Watched",
+                  icon: "eye"
+                },
+                {
+                  id: "created" as const,
+                  label: t("createdTicketsTab"),
+                  shortLabel: language === "de" ? "Erstellt" : "Created",
+                  icon: "edit"
+                },
+                {
+                  id: "users" as const,
+                  label: t("usersTab"),
+                  shortLabel: t("usersTab"),
+                  icon: "users"
+                }
+              ].map((tab) => (
+                <button
+                  aria-label={tab.label}
+                  aria-pressed={activeTicketTab === tab.id}
+                  className={activeTicketTab === tab.id ? "is-active" : undefined}
+                  key={tab.id}
+                  title={tab.label}
+                  type="button"
+                  onClick={() => handleSelectTicketTab(tab.id)}
+                >
+                  <span aria-hidden="true" className={`bottom-ticket-tab-icon icon-${tab.icon}`} />
+                  <span>{tab.shortLabel}</span>
+                </button>
+              ))}
+            </nav>
           ) : null}
 
           {ticketContextMenu ? (

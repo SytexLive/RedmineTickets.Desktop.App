@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getNextReleaseVersion, getVersionCommitRange } from "./prepare-release.mjs";
 import { getReleaseType, incrementVersion } from "./release-version.mjs";
 
 describe("release version calculation", () => {
@@ -24,5 +25,38 @@ describe("release version calculation", () => {
       "major"
     );
     expect(incrementVersion("0.1.0", "major")).toBe("1.0.0");
+  });
+});
+
+describe("release preparation", () => {
+  it("calculates the next release version from conventional commits", () => {
+    expect(
+      getNextReleaseVersion({
+        baseVersion: "0.2.0",
+        commitMessages: ["feat: add ticket tabs", "fix: remove flicker"],
+      })
+    ).toEqual({
+      changed: true,
+      releaseType: "minor",
+      version: "0.3.0",
+    });
+  });
+
+  it("keeps the current version when no release commit is present", () => {
+    expect(
+      getNextReleaseVersion({
+        baseVersion: "0.2.0",
+        commitMessages: ["Update ticket view"],
+      })
+    ).toEqual({
+      changed: false,
+      releaseType: null,
+      version: "0.2.0",
+    });
+  });
+
+  it("uses the last committed version file as the release boundary", () => {
+    expect(getVersionCommitRange("abc123")).toBe("abc123..HEAD");
+    expect(getVersionCommitRange("")).toBe("HEAD");
   });
 });

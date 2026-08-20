@@ -36,7 +36,7 @@ import {
 import { SettingsForm } from "./components/SettingsForm";
 import { TicketList } from "./components/TicketList";
 import {
-  ChevronRightIcon,
+  ChevronDownIcon,
   PinIcon,
   PlusIcon,
   RefreshIcon,
@@ -70,8 +70,6 @@ type TicketContextSubmenu = "assignee" | "status";
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
 const CONTEXT_MENU_MARGIN = 12;
 const CONTEXT_MENU_WIDTH = 240;
-const CONTEXT_MENU_FLYOUT_GAP = 8;
-const CONTEXT_MENU_FLYOUT_WIDTH = 230;
 const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
 
 function selectedOptionId(value: string) {
@@ -96,23 +94,6 @@ function contextMenuLeft(x: number, viewportWidth: number) {
     CONTEXT_MENU_MARGIN,
     Math.min(x, viewportWidth - CONTEXT_MENU_WIDTH - CONTEXT_MENU_MARGIN)
   );
-}
-
-function contextMenuFlyoutClass(x: number, viewportWidth: number) {
-  const menuLeft = contextMenuLeft(x, viewportWidth);
-  const rightSpace =
-    viewportWidth - menuLeft - CONTEXT_MENU_WIDTH - CONTEXT_MENU_FLYOUT_GAP;
-  const leftSpace = menuLeft - CONTEXT_MENU_FLYOUT_GAP;
-
-  if (rightSpace >= CONTEXT_MENU_FLYOUT_WIDTH) {
-    return "context-menu-flyout";
-  }
-
-  if (leftSpace >= CONTEXT_MENU_FLYOUT_WIDTH) {
-    return "context-menu-flyout open-left";
-  }
-
-  return "context-menu-flyout open-stacked";
 }
 
 function findDefaultNormalPriorityId(priorities: IssuePriority[]) {
@@ -1027,7 +1008,19 @@ export function App() {
               >
                 {t("addComment")}
               </button>
-              <div className="context-menu-submenu">
+              <div
+                className="context-menu-submenu"
+                onBlur={(event) => {
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return;
+                  }
+
+                  setTicketContextSubmenu(null);
+                }}
+              >
                 <button
                   aria-expanded={ticketContextSubmenu === "assignee"}
                   type="button"
@@ -1038,12 +1031,10 @@ export function App() {
                   }}
                 >
                   <span>{t("assignTo")}</span>
-                  <ChevronRightIcon className="context-menu-chevron" />
+                  <ChevronDownIcon className="context-menu-chevron" />
                 </button>
                 {ticketContextSubmenu === "assignee" ? (
-                  <div
-                    className={contextMenuFlyoutClass(ticketContextMenu.x, window.innerWidth)}
-                  >
+                  <div className="context-menu-flyout">
                     <span>{t("assignTo")}</span>
                     {assignableUsers.length > 0 ? (
                       assignableUsers.map((user) => (
@@ -1063,7 +1054,19 @@ export function App() {
                   </div>
                 ) : null}
               </div>
-              <div className="context-menu-submenu">
+              <div
+                className="context-menu-submenu"
+                onBlur={(event) => {
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return;
+                  }
+
+                  setTicketContextSubmenu(null);
+                }}
+              >
                 <button
                   aria-expanded={ticketContextSubmenu === "status"}
                   type="button"
@@ -1074,12 +1077,10 @@ export function App() {
                   }}
                 >
                   <span>{t("status")}</span>
-                  <ChevronRightIcon className="context-menu-chevron" />
+                  <ChevronDownIcon className="context-menu-chevron" />
                 </button>
                 {ticketContextSubmenu === "status" ? (
-                  <div
-                    className={contextMenuFlyoutClass(ticketContextMenu.x, window.innerWidth)}
-                  >
+                  <div className="context-menu-flyout">
                     <span>{t("status")}</span>
                     {issueStatuses.length > 0 ? (
                       issueStatuses.map((status) => (

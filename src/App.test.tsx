@@ -9,9 +9,9 @@ function settingsFixture() {
     baseUrl: "https://redmine.example.com",
     apiKey: "secret",
     monitorIndex: 0,
-    dockSide: "right" as const,
+    dockSide: "right" as "left" | "right",
     refreshIntervalSeconds: 15,
-    language: "de" as const,
+    language: "de" as "de" | "en",
     ticketNotificationsEnabled: true,
     ticketNotificationVolume: 0.35,
     ticketNotificationSound: "default.mp3"
@@ -394,7 +394,7 @@ describe("App", () => {
     render(<App />);
 
     const ticket = await screen.findByText("Login reparieren");
-    Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 520 });
     fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
 
     const menuButtons = await screen.findAllByRole("button");
@@ -407,12 +407,19 @@ describe("App", () => {
     expect(addCommentIndex).toBeGreaterThanOrEqual(0);
     expect(openInBrowserIndex).toBeGreaterThan(addCommentIndex);
 
-    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    const statusSubmenuButton = screen.getByRole("button", { name: /Status/ });
+    const statusSubmenu = statusSubmenuButton.closest(".context-menu-submenu");
+    fireEvent.mouseEnter(statusSubmenu!);
+    expect(screen.queryByRole("button", { name: "In Bearbeitung" })).toBeNull();
+    fireEvent.click(statusSubmenuButton);
     const statusOption = await screen.findByRole("button", { name: "In Bearbeitung" });
     const statusFlyout = statusOption.closest(".context-menu-flyout");
-    expect(statusFlyout).toHaveClass("open-stacked");
+    expect(statusFlyout).toBeTruthy();
     expect(statusFlyout).not.toHaveClass("open-left");
-    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    fireEvent.click(statusSubmenuButton);
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "In Bearbeitung" })).toBeNull();
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /Zuweisen an/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Max Mustermann" }));

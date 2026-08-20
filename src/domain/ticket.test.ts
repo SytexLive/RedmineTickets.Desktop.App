@@ -24,7 +24,7 @@ describe("buildTicketUrl", () => {
 describe("buildUserOpenTicketsUrl", () => {
   it("builds a Redmine issue list filtered to open tickets assigned to a user", () => {
     expect(buildUserOpenTicketsUrl("https://redmine.example.com/", 7)).toBe(
-      "https://redmine.example.com/issues?status_id=open&assigned_to_id=7"
+      "https://redmine.example.com/issues?set_filter=1&f%5B%5D=status_id&op%5Bstatus_id%5D=o&f%5B%5D=assigned_to_id&op%5Bassigned_to_id%5D=%3D&v%5Bassigned_to_id%5D%5B%5D=7"
     );
   });
 

@@ -499,7 +499,8 @@ describe("App", () => {
       }
       if (command === "fetch_open_tickets") {
         return Promise.resolve([
-          { ...ticketFixture(1, "Mina ticket"), assignee: "Mina Meyer", assigneeId: 7 }
+          { ...ticketFixture(1, "Mina ticket"), assignee: "Mina Meyer", assigneeId: 7 },
+          { ...ticketFixture(2, "Alex ticket"), assignee: "Alex Adler", assigneeId: 4 }
         ]);
       }
       return Promise.resolve(args);
@@ -509,13 +510,126 @@ describe("App", () => {
 
     await screen.findByText("Assigned ticket");
     fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Mina Meyer 1 offene Tickets" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Alex Adler 1 offene Tickets" }));
 
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
-        url: "https://redmine.example.com/issues?status_id=open&assigned_to_id=7"
+        url: "https://redmine.example.com/issues?set_filter=1&f%5B%5D=status_id&op%5Bstatus_id%5D=o&f%5B%5D=assigned_to_id&op%5Bassigned_to_id%5D=%3D&v%5Bassigned_to_id%5D%5B%5D=4"
       });
     });
+  });
+
+  it("keeps settings open when a ticket refresh completes", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") return Promise.resolve([]);
+      if (command === "fetch_created_open_tickets") return Promise.resolve([]);
+      if (command === "fetch_open_tickets") return Promise.resolve([]);
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen anzeigen" }));
+    expect(screen.getByLabelText("Redmine URL")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tickets aktualisieren" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Redmine URL")).toBeInTheDocument();
+    });
+  });
+
+  it("returns to tickets after saving settings", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "save_settings") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen anzeigen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Redmine URL")).toBeNull();
+    });
+    expect(screen.getByText("Assigned ticket")).toBeInTheDocument();
+  });
+
+  it("keeps unsaved settings edits when the panel collapses and expands", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "collapse_window") return Promise.resolve();
+      if (command === "expand_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      return Promise.resolve();
+    });
+
+    const { container } = render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen anzeigen" }));
+    fireEvent.change(screen.getByLabelText("Redmine URL"), {
+      target: { value: "https://draft.example.com" }
+    });
+
+    const shell = container.querySelector(".app-shell");
+    if (!shell) {
+      throw new Error("App shell not found");
+    }
+
+    fireEvent.mouseLeave(shell);
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    fireEvent.mouseEnter(shell);
+
+    expect(screen.getByLabelText("Redmine URL")).toHaveValue(
+      "https://draft.example.com"
+    );
   });
 
   it("keeps cached user counts visible while refreshing the users tab in the background", async () => {

@@ -140,6 +140,7 @@ function hasCachedTickets(cacheEntry: TicketTabCacheEntry) {
 
 export function App() {
   const [settings, setSettings] = useState<RedmineSettings | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<RedmineSettings | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeTicketTab, setActiveTicketTab] = useState<TicketTab>("my-open");
   const [ticketTabCache, setTicketTabCache] = useState<TicketTabCache>(
@@ -189,6 +190,7 @@ export function App() {
   const activeTicketTabRef = useRef<TicketTab>("my-open");
   const ticketTabCacheRef = useRef<TicketTabCache>(createEmptyTicketTabCache());
   const hasInitializedTicketBaselineRef = useRef(false);
+  const viewStateRef = useRef<ViewState>("loading");
 
   const refreshTickets = useCallback(async (
     nextSettings: RedmineSettings,
@@ -227,10 +229,14 @@ export function App() {
         }
       }
       setError(null);
-      setViewState("tickets");
+      if (viewStateRef.current !== "settings") {
+        setViewState("tickets");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setViewState("tickets");
+      if (viewStateRef.current !== "settings") {
+        setViewState("tickets");
+      }
     }
   }, [activeTicketTab]);
 
@@ -312,6 +318,7 @@ export function App() {
         ticketStateRef.current = loadedTicketState;
         setTicketState(loadedTicketState);
         setSettings(loadedSettings);
+        setSettingsDraft(loadedSettings);
         if (!loadedSettings) {
           void dockWindow(null);
           setViewState("settings");
@@ -335,6 +342,10 @@ export function App() {
       cancelled = true;
     };
   }, [refreshIssueStatuses, refreshTicketCreateOptions, refreshTickets]);
+
+  useEffect(() => {
+    viewStateRef.current = viewState;
+  }, [viewState]);
 
   useEffect(() => {
     if (!settings) {
@@ -409,10 +420,12 @@ export function App() {
     try {
       await saveSettings(nextSettings);
       setSettings(nextSettings);
+      setSettingsDraft(nextSettings);
       await dockWindow(nextSettings);
       await refreshIssueStatuses(nextSettings);
       await refreshTicketCreateOptions(nextSettings);
       await refreshTickets(nextSettings);
+      setViewState("tickets");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -665,7 +678,7 @@ export function App() {
   }
 
   function handlePanelMouseLeave() {
-    if (pinned || collapsed) {
+    if (pinned || collapsed || viewStateRef.current === "settings") {
       return;
     }
 
@@ -816,8 +829,9 @@ export function App() {
 
           {showingSettings ? (
             <SettingsForm
-              initialSettings={settings}
+              initialSettings={settingsDraft ?? settings}
               monitors={monitors}
+              onChange={setSettingsDraft}
               onSave={handleSave}
               onPreviewTicketNotificationSound={(sound, volume) =>
                 playTicketNotificationSound({ enabled: true, volume, sound })

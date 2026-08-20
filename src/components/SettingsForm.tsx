@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import type { MonitorInfo, RedmineSettings } from "../api/redmine";
 import { createTranslator, type Language } from "../i18n";
 import {
@@ -11,6 +11,7 @@ type SettingsFormProps = {
   monitors: MonitorInfo[];
   saving: boolean;
   onSave: (settings: RedmineSettings) => void;
+  onChange?: (settings: RedmineSettings) => void;
   onPreviewTicketNotificationSound?: (sound: string, volume: number) => void;
 };
 
@@ -19,6 +20,7 @@ export function SettingsForm({
   monitors,
   saving,
   onSave,
+  onChange,
   onPreviewTicketNotificationSound
 }: SettingsFormProps) {
   const [baseUrl, setBaseUrl] = useState(initialSettings?.baseUrl ?? "");
@@ -43,20 +45,36 @@ export function SettingsForm({
     initialSettings?.ticketNotificationSound ?? DEFAULT_TICKET_NOTIFICATION_SOUND
   );
   const t = createTranslator(language);
+  const currentSettings = {
+    baseUrl: baseUrl.trim(),
+    apiKey: apiKey.trim(),
+    monitorIndex: Number(monitorIndex),
+    dockSide,
+    refreshIntervalSeconds: Number(refreshIntervalSeconds),
+    language,
+    ticketNotificationsEnabled,
+    ticketNotificationVolume: Number(ticketNotificationVolume),
+    ticketNotificationSound
+  };
+
+  useEffect(() => {
+    onChange?.(currentSettings);
+  }, [
+    apiKey,
+    baseUrl,
+    dockSide,
+    language,
+    monitorIndex,
+    onChange,
+    refreshIntervalSeconds,
+    ticketNotificationSound,
+    ticketNotificationVolume,
+    ticketNotificationsEnabled
+  ]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave({
-      baseUrl: baseUrl.trim(),
-      apiKey: apiKey.trim(),
-      monitorIndex: Number(monitorIndex),
-      dockSide,
-      refreshIntervalSeconds: Number(refreshIntervalSeconds),
-      language,
-      ticketNotificationsEnabled,
-      ticketNotificationVolume: Number(ticketNotificationVolume),
-      ticketNotificationSound
-    });
+    onSave(currentSettings);
   }
 
   function previewTicketNotificationSound() {

@@ -26,5 +26,13 @@ export function buildUserOpenTicketsUrl(baseUrl: string, userId: number): string
     throw new Error("User ID must be positive");
   }
 
-  return `${baseUrl.replace(/\/+$/, "")}/issues?status_id=open&assigned_to_id=${userId}`;
+  const params = new URLSearchParams();
+  params.set("set_filter", "1");
+  params.append("f[]", "status_id");
+  params.set("op[status_id]", "o");
+  params.append("f[]", "assigned_to_id");
+  params.set("op[assigned_to_id]", "=");
+  params.append("v[assigned_to_id][]", String(userId));
+
+  return `${baseUrl.replace(/\/+$/, "")}/issues?${params.toString()}`;
 }

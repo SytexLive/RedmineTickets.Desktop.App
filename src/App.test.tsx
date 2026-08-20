@@ -188,7 +188,7 @@ describe("App", () => {
     });
   });
 
-  it("adds a comment and assigns the ticket from the comment dialog", async () => {
+  it("adds a comment and updates assignee and status from the comment dialog", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {
         return Promise.resolve();
@@ -221,7 +221,10 @@ describe("App", () => {
       }
 
       if (command === "fetch_issue_statuses") {
-        return Promise.resolve([]);
+        return Promise.resolve([
+          { id: 1, name: "Neu" },
+          { id: 2, name: "In Bearbeitung" }
+        ]);
       }
 
       if (command === "fetch_assignable_users") {
@@ -250,6 +253,10 @@ describe("App", () => {
         return Promise.resolve();
       }
 
+      if (command === "update_ticket_status") {
+        return Promise.resolve();
+      }
+
       return Promise.resolve();
     });
 
@@ -270,10 +277,143 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Zuweisen an"), {
       target: { value: "7" }
     });
+    fireEvent.change(screen.getByLabelText("Status"), {
+      target: { value: "2" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "Änderungen speichern" }));
 
     await waitFor(() => {
+      const expectedSettings = {
+        baseUrl: "https://redmine.example.com",
+        apiKey: "secret",
+        monitorIndex: 0,
+        dockSide: "right",
+        refreshIntervalSeconds: 60,
+        language: "de",
+        ticketNotificationsEnabled: true,
+        ticketNotificationVolume: 0.35,
+        ticketNotificationSound: "default.mp3"
+      };
+
       expect(invokeMock).toHaveBeenCalledWith("add_ticket_comment", {
+        settings: expectedSettings,
+        ticketId: 42,
+        comment: "Bitte übernehmen."
+      });
+      expect(invokeMock).toHaveBeenCalledWith("assign_ticket", {
+        settings: expectedSettings,
+        ticketId: 42,
+        userId: 7
+      });
+      expect(invokeMock).toHaveBeenCalledWith("update_ticket_status", {
+        settings: expectedSettings,
+        ticketId: 42,
+        statusId: 2
+      });
+      expect(invokeMock).toHaveBeenCalledWith("fetch_assignable_users", {
+        settings: expectedSettings,
+        projectId: 12
+      });
+    });
+  });
+
+  it("puts add comment first in the ticket context menu and assigns from a submenu", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") {
+        return Promise.resolve();
+      }
+
+      if (command === "list_monitors") {
+        return Promise.resolve([{ index: 0, label: "Monitor 1", isPrimary: true }]);
+      }
+
+      if (command === "load_settings") {
+        return Promise.resolve({
+          baseUrl: "https://redmine.example.com",
+          apiKey: "secret",
+          monitorIndex: 0,
+          dockSide: "right",
+          refreshIntervalSeconds: 60,
+          language: "de",
+          ticketNotificationsEnabled: true,
+          ticketNotificationVolume: 0.35,
+          ticketNotificationSound: "default.mp3"
+        });
+      }
+
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+
+      if (command === "save_ticket_state") {
+        return Promise.resolve();
+      }
+
+      if (command === "fetch_issue_statuses") {
+        return Promise.resolve([
+          { id: 1, name: "Neu" },
+          { id: 2, name: "In Bearbeitung" }
+        ]);
+      }
+
+      if (command === "fetch_assignable_users") {
+        return Promise.resolve([
+          { id: 7, name: "Max Mustermann" },
+          { id: 8, name: "Mina Meyer" }
+        ]);
+      }
+
+      if (command === "fetch_tickets") {
+        return Promise.resolve([
+          {
+            id: 42,
+            subject: "Login reparieren",
+            status: "Neu",
+            priority: "Hoch",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/42"
+          }
+        ]);
+      }
+
+      if (command === "assign_ticket") {
+        return Promise.resolve();
+      }
+
+      if (command === "update_ticket_status") {
+        return Promise.resolve();
+      }
+
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+
+    const menuButtons = await screen.findAllByRole("button");
+    const addCommentIndex = menuButtons.findIndex((button) =>
+      button.textContent?.includes("Kommentar hinzufügen")
+    );
+    const openInBrowserIndex = menuButtons.findIndex((button) =>
+      button.textContent?.includes("Im Browser öffnen")
+    );
+    expect(addCommentIndex).toBeGreaterThanOrEqual(0);
+    expect(openInBrowserIndex).toBeGreaterThan(addCommentIndex);
+
+    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    expect(await screen.findByRole("button", { name: "In Bearbeitung" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Zuweisen an/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Max Mustermann" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("fetch_assignable_users", {
         settings: {
           baseUrl: "https://redmine.example.com",
           apiKey: "secret",
@@ -285,8 +425,7 @@ describe("App", () => {
           ticketNotificationVolume: 0.35,
           ticketNotificationSound: "default.mp3"
         },
-        ticketId: 42,
-        comment: "Bitte übernehmen."
+        projectId: 12
       });
       expect(invokeMock).toHaveBeenCalledWith("assign_ticket", {
         settings: {
@@ -302,20 +441,6 @@ describe("App", () => {
         },
         ticketId: 42,
         userId: 7
-      });
-      expect(invokeMock).toHaveBeenCalledWith("fetch_assignable_users", {
-        settings: {
-          baseUrl: "https://redmine.example.com",
-          apiKey: "secret",
-          monitorIndex: 0,
-          dockSide: "right",
-          refreshIntervalSeconds: 60,
-          language: "de",
-          ticketNotificationsEnabled: true,
-          ticketNotificationVolume: 0.35,
-          ticketNotificationSound: "default.mp3"
-        },
-        projectId: 12
       });
     });
   });

@@ -64,6 +64,8 @@ type TicketContextMenu = {
   y: number;
 };
 
+type TicketContextSubmenu = "assignee" | "status";
+
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
 const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
 
@@ -164,9 +166,12 @@ export function App() {
   const [newTicketAssignableUsers, setNewTicketAssignableUsers] = useState<RedmineUser[]>([]);
   const [ticketContextMenu, setTicketContextMenu] =
     useState<TicketContextMenu | null>(null);
+  const [ticketContextSubmenu, setTicketContextSubmenu] =
+    useState<TicketContextSubmenu | null>(null);
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [selectedCommentStatusId, setSelectedCommentStatusId] = useState("");
   const [showCreateTicketDialog, setShowCreateTicketDialog] = useState(false);
   const [newTicketSubject, setNewTicketSubject] = useState("");
   const [newTicketProjectId, setNewTicketProjectId] = useState("");
@@ -282,7 +287,7 @@ export function App() {
   ) => {
     try {
       const loadedUsers = await fetchAssignableUsers(nextSettings, projectId);
-      setAssignableUsers(loadedUsers);
+      setAssignableUsers(Array.isArray(loadedUsers) ? loadedUsers : []);
     } catch {
       setAssignableUsers([]);
     }
@@ -294,7 +299,7 @@ export function App() {
   ) => {
     try {
       const loadedUsers = await fetchAssignableUsers(nextSettings, projectId);
-      setNewTicketAssignableUsers(loadedUsers);
+      setNewTicketAssignableUsers(Array.isArray(loadedUsers) ? loadedUsers : []);
     } catch {
       setNewTicketAssignableUsers([]);
     }
@@ -472,8 +477,25 @@ export function App() {
     }
 
     setTicketContextMenu(null);
+    setTicketContextSubmenu(null);
     try {
       await updateTicketStatus(settings, ticket.id, status.id);
+      await refreshTickets(settings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleAssignTicket(ticket: Ticket, user: RedmineUser) {
+    if (!settings) {
+      setViewState("settings");
+      return;
+    }
+
+    setTicketContextMenu(null);
+    setTicketContextSubmenu(null);
+    try {
+      await assignTicket(settings, ticket.id, user.id);
       await refreshTickets(settings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -492,8 +514,12 @@ export function App() {
       if (selectedAssigneeId) {
         await assignTicket(settings, commentTicket.id, Number(selectedAssigneeId));
       }
+      if (selectedCommentStatusId) {
+        await updateTicketStatus(settings, commentTicket.id, Number(selectedCommentStatusId));
+      }
       setComment("");
       setSelectedAssigneeId("");
+      setSelectedCommentStatusId("");
       setCommentTicket(null);
       await refreshTickets(settings);
     } catch (err) {
@@ -552,12 +578,24 @@ export function App() {
     }
   }
 
+  function handleOpenTicketContextMenu(ticket: Ticket, position: { x: number; y: number }) {
+    setTicketContextMenu({ ticket, x: position.x, y: position.y });
+    setTicketContextSubmenu(null);
+    setAssignableUsers([]);
+
+    if (settings) {
+      void refreshAssignableUsers(settings, ticket.projectId);
+    }
+  }
+
   function handleOpenCommentDialog(ticket: Ticket) {
     setCommentTicket(ticket);
     setComment("");
     setSelectedAssigneeId("");
+    setSelectedCommentStatusId("");
     setAssignableUsers([]);
     setTicketContextMenu(null);
+    setTicketContextSubmenu(null);
 
     if (settings) {
       void refreshAssignableUsers(settings, ticket.projectId);
@@ -849,9 +887,7 @@ export function App() {
           {viewState === "tickets" && tickets.length > 0 && activeTicketTab !== "users" ? (
             <TicketList
               onOpenTicket={handleOpenTicket}
-              onTicketContextMenu={(ticket, position) => {
-                setTicketContextMenu({ ticket, x: position.x, y: position.y });
-              }}
+              onTicketContextMenu={handleOpenTicketContextMenu}
               sortLabels={{
                 sortBy: t("sortBy"),
                 updatedDesc: t("sortUpdatedDesc"),
@@ -949,44 +985,104 @@ export function App() {
               className="ticket-context-menu"
               ref={ticketContextMenuRef}
               style={{
-                left: Math.min(ticketContextMenu.x, window.innerWidth - 220),
-                top: Math.min(ticketContextMenu.y, window.innerHeight - 240)
+                left: Math.max(12, Math.min(ticketContextMenu.x, window.innerWidth - 252)),
+                top: Math.max(12, Math.min(ticketContextMenu.y, window.innerHeight - 184))
               }}
             >
               <button
-                type="button"
-                onClick={() => {
-                  void handleOpenTicket(ticketContextMenu.ticket);
-                  setTicketContextMenu(null);
-                }}
-              >
-                {t("openInBrowser")}
-              </button>
-              <div className="context-menu-section">
-                <span>{t("status")}</span>
-                {issueStatuses.length > 0 ? (
-                  issueStatuses.map((status) => (
-                    <button
-                      key={status.id}
-                      type="button"
-                      onClick={() => {
-                        void handleChangeStatus(ticketContextMenu.ticket, status);
-                      }}
-                    >
-                      {status.name}
-                    </button>
-                  ))
-                ) : (
-                  <span className="context-menu-empty">{t("noStatusesLoaded")}</span>
-                )}
-              </div>
-              <button
+                className="context-menu-primary-action"
                 type="button"
                 onClick={() => {
                   handleOpenCommentDialog(ticketContextMenu.ticket);
                 }}
               >
                 {t("addComment")}
+              </button>
+              <div className="context-menu-submenu">
+                <button
+                  aria-expanded={ticketContextSubmenu === "assignee"}
+                  type="button"
+                  onClick={() => {
+                    setTicketContextSubmenu((currentSubmenu) =>
+                      currentSubmenu === "assignee" ? null : "assignee"
+                    );
+                  }}
+                >
+                  <span>{t("assignTo")}</span>
+                  <span aria-hidden="true" className="context-menu-chevron">&gt;</span>
+                </button>
+                {ticketContextSubmenu === "assignee" ? (
+                  <div
+                    className={`context-menu-flyout${
+                      ticketContextMenu.x > window.innerWidth - 500 ? " open-left" : ""
+                    }`}
+                  >
+                    <span>{t("assignTo")}</span>
+                    {assignableUsers.length > 0 ? (
+                      assignableUsers.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => {
+                            void handleAssignTicket(ticketContextMenu.ticket, user);
+                          }}
+                        >
+                          {user.name}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="context-menu-empty">{t("noUsersLoaded")}</span>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div className="context-menu-submenu">
+                <button
+                  aria-expanded={ticketContextSubmenu === "status"}
+                  type="button"
+                  onClick={() => {
+                    setTicketContextSubmenu((currentSubmenu) =>
+                      currentSubmenu === "status" ? null : "status"
+                    );
+                  }}
+                >
+                  <span>{t("status")}</span>
+                  <span aria-hidden="true" className="context-menu-chevron">&gt;</span>
+                </button>
+                {ticketContextSubmenu === "status" ? (
+                  <div
+                    className={`context-menu-flyout${
+                      ticketContextMenu.x > window.innerWidth - 500 ? " open-left" : ""
+                    }`}
+                  >
+                    <span>{t("status")}</span>
+                    {issueStatuses.length > 0 ? (
+                      issueStatuses.map((status) => (
+                        <button
+                          key={status.id}
+                          type="button"
+                          onClick={() => {
+                            void handleChangeStatus(ticketContextMenu.ticket, status);
+                          }}
+                        >
+                          {status.name}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="context-menu-empty">{t("noStatusesLoaded")}</span>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleOpenTicket(ticketContextMenu.ticket);
+                  setTicketContextMenu(null);
+                  setTicketContextSubmenu(null);
+                }}
+              >
+                {t("openInBrowser")}
               </button>
             </div>
           ) : null}
@@ -1034,12 +1130,31 @@ export function App() {
                   ))}
                 </select>
               </label>
+              <label className="comment-dialog-field">
+                <span>{t("status")}</span>
+                <select
+                  aria-label={t("status")}
+                  onChange={(event) => setSelectedCommentStatusId(event.target.value)}
+                  value={selectedCommentStatusId}
+                >
+                  <option value="">{t("noAssignment")}</option>
+                  {issueStatuses.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {assignableUsers.length === 0 ? (
                 <span className="comment-dialog-empty">{t("noUsersLoaded")}</span>
               ) : null}
               <button
                 className="primary-action"
-                disabled={comment.trim().length === 0 && !selectedAssigneeId}
+                disabled={
+                  comment.trim().length === 0 &&
+                  !selectedAssigneeId &&
+                  !selectedCommentStatusId
+                }
                 type="button"
                 onClick={() => {
                   void handleSubmitComment();

@@ -183,9 +183,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 210px;
-  max-height: 260px;
-  overflow-y: auto;
+  width: 240px;
+  overflow: visible;
   border: 1px solid #cbd3df;
   border-radius: 8px;
   background: #ffffff;
@@ -204,20 +203,69 @@ textarea {
   text-align: left;
 }
 
+.ticket-context-menu button:focus-visible {
+  outline: 2px solid #1f6feb;
+  outline-offset: 2px;
+}
+
+.ticket-context-menu .context-menu-primary-action {
+  background: #1f6feb;
+  color: #ffffff;
+  font-weight: 700;
+}
+
 .ticket-context-menu button:hover {
   background: #eef4fb;
 }
 
-.context-menu-section {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  border-top: 1px solid #edf1f6;
-  border-bottom: 1px solid #edf1f6;
-  padding: 5px 0;
+.ticket-context-menu .context-menu-primary-action:hover {
+  background: #1a5fc7;
 }
 
-.context-menu-section > span,
+.context-menu-submenu {
+  position: relative;
+}
+
+.context-menu-submenu > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-menu-submenu > button[aria-expanded="true"] {
+  background: #eef4fb;
+}
+
+.context-menu-chevron {
+  color: #697282;
+  font-weight: 700;
+}
+
+.context-menu-flyout {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 230px;
+  max-height: min(320px, calc(100vh - 24px));
+  overflow-y: auto;
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgb(18 30 48 / 18%);
+  padding: 6px;
+}
+
+.context-menu-flyout.open-left {
+  right: calc(100% + 8px);
+  left: auto;
+}
+
+.context-menu-flyout > span,
 .context-menu-empty {
   color: #697282;
   font-size: 12px;

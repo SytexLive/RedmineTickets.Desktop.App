@@ -41,21 +41,28 @@ textarea {
 }
 
 .app-shell-collapsed {
+  position: relative;
   justify-content: flex-start;
   background: transparent;
   border: 0;
   box-shadow: none;
-  cursor: pointer;
+  cursor: default;
+  pointer-events: none;
 }
 
 .collapsed-panel-handle {
   --collapsed-edge-width: 2px;
-  position: relative;
+  position: absolute;
+  top: 0;
+  bottom: 0;
   display: block;
-  width: 100vw;
+  width: var(--collapsed-edge-width);
   height: 100vh;
   padding: 0;
   background: transparent;
+  cursor: pointer;
+  overflow: visible;
+  pointer-events: auto;
 }
 
 .collapsed-panel-handle::before {
@@ -71,7 +78,15 @@ textarea {
   left: 0;
 }
 
+.app-shell-left .collapsed-panel-handle {
+  left: 0;
+}
+
 .app-shell-right .collapsed-panel-handle::before {
+  right: 0;
+}
+
+.app-shell-right .collapsed-panel-handle {
   right: 0;
 }
 

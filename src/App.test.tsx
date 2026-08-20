@@ -1559,6 +1559,10 @@ describe("App", () => {
 
     fireEvent.mouseEnter(screen.getByRole("main"));
 
+    expect(invokeMock.mock.calls.filter(([command]) => command === "expand_window")).toHaveLength(0);
+
+    fireEvent.mouseEnter(screen.getByLabelText("1 offen"));
+
     expect(invokeMock).toHaveBeenCalledWith("expand_window", {
       settings: {
         monitorIndex: 0,

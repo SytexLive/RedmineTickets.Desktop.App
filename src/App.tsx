@@ -786,13 +786,14 @@ export function App() {
   return (
     <main
       className={`app-shell app-shell-${dockSide}${collapsed ? " app-shell-collapsed" : ""}`}
-      onMouseEnter={handlePanelMouseEnter}
+      onMouseEnter={collapsed ? undefined : handlePanelMouseEnter}
       onMouseLeave={handlePanelMouseLeave}
     >
       {collapsed ? (
         <div
           aria-label={`${tickets.length} ${t("openCount")}`}
           className="collapsed-panel-handle"
+          onMouseEnter={handlePanelMouseEnter}
           title={`${tickets.length} ${t("openCount")}`}
         >
           <span className="collapsed-ticket-badge">{tickets.length}</span>

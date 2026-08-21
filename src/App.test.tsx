@@ -568,6 +568,54 @@ describe("App", () => {
     });
   });
 
+  it("does not show loading or refetch when selecting an already cached ticket tab", async () => {
+    const watchedRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    let watchedFetchCount = 0;
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") {
+        watchedFetchCount += 1;
+        return watchedFetchCount === 1
+          ? Promise.resolve([ticketFixture(42, "Watched ticket")])
+          : watchedRefresh.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Beobachtete Tickets" }));
+    await screen.findByText("Watched ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Meine offenen Tickets" }));
+    await screen.findByText("Assigned ticket");
+
+    fireEvent.click(screen.getByRole("button", { name: "Beobachtete Tickets" }));
+
+    expect(screen.getByText("Watched ticket")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
+    expect(watchedFetchCount).toBe(2);
+
+    await act(async () => {
+      watchedRefresh.resolve([ticketFixture(43, "Updated watched ticket")]);
+    });
+
+    expect(await screen.findByText("Updated watched ticket")).toBeInTheDocument();
+  });
+
   it("shows users sorted by their number of open tickets in the bottom users tab", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();
@@ -867,6 +915,7 @@ describe("App", () => {
     expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
       "Mina Meyer2"
     ]);
+    expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
     expect(userFetchCount).toBe(2);
 
     await act(async () => {
@@ -880,6 +929,64 @@ describe("App", () => {
         "Alex Adler1"
       ]);
     });
+  });
+
+  it("refreshes the active ticket tab on the interval without showing a loading bar", async () => {
+    installAudioMock();
+    vi.useFakeTimers();
+    const ticketsRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    let ticketFetchCount = 0;
+
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_watched_open_tickets") return Promise.resolve([]);
+      if (command === "fetch_created_open_tickets") return Promise.resolve([]);
+      if (command === "fetch_open_tickets") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        ticketFetchCount += 1;
+        return ticketFetchCount === 1
+          ? Promise.resolve([ticketFixture(41, "Assigned ticket")])
+          : ticketsRefresh.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Assigned ticket")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(ticketFetchCount).toBe(2);
+    expect(screen.getByText("Assigned ticket")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
+
+    await act(async () => {
+      ticketsRefresh.resolve([ticketFixture(42, "Refreshed ticket")]);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Refreshed ticket")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("creates a ticket from named options in the new-ticket dialog", async () => {

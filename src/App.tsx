@@ -250,9 +250,14 @@ export function App() {
 
   const refreshTickets = useCallback(async (
     nextSettings: RedmineSettings,
-    ticketTab: TicketTab = activeTicketTab
+    ticketTab: TicketTab = activeTicketTab,
+    options: { showLoading?: boolean } = {}
   ) => {
-    setTicketTabLoadingState(ticketTab, true);
+    const showLoading =
+      options.showLoading ?? !hasCachedTickets(ticketTabCacheRef.current[ticketTab]);
+    if (showLoading) {
+      setTicketTabLoadingState(ticketTab, true);
+    }
     try {
       const loadedTickets = await fetchTicketsForTab(nextSettings, ticketTab);
       const nextCacheEntry = {
@@ -295,7 +300,9 @@ export function App() {
         setViewState("tickets");
       }
     } finally {
-      setTicketTabLoadingState(ticketTab, false);
+      if (showLoading) {
+        setTicketTabLoadingState(ticketTab, false);
+      }
     }
   }, [activeTicketTab, setTicketTabLoadingState]);
 
@@ -303,7 +310,9 @@ export function App() {
     nextSettings: RedmineSettings
   ) => {
     await Promise.all(
-      TICKET_TABS.map((ticketTab) => refreshTickets(nextSettings, ticketTab))
+      TICKET_TABS.map((ticketTab) =>
+        refreshTickets(nextSettings, ticketTab, { showLoading: false })
+      )
     );
   }, [refreshTickets]);
 
@@ -806,7 +815,9 @@ export function App() {
     }
 
     if (settings) {
-      void refreshTickets(settings, ticketTab);
+      void refreshTickets(settings, ticketTab, {
+        showLoading: !hasCachedTickets(cachedTab)
+      });
     }
   }
 

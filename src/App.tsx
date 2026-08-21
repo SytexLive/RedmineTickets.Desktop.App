@@ -851,9 +851,7 @@ export function App() {
           className="collapsed-panel-handle"
           onMouseEnter={handlePanelMouseEnter}
           title={`${tickets.length} ${t("openCount")}`}
-        >
-          <span className="collapsed-ticket-badge">{tickets.length}</span>
-        </div>
+        />
       ) : (
         <>
           <header className="panel-header">

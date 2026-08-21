@@ -229,15 +229,11 @@ describe("TicketList", () => {
     expect(styles).toMatch(/\.collapsed-panel-handle\s*{[^}]*pointer-events:\s*auto;/);
     expect(styles).toMatch(/\.collapsed-panel-handle::before\s*{[^}]*width:\s*var\(--collapsed-edge-width\);/);
     expect(styles).not.toMatch(/\.collapsed-panel-handle\s*{[^}]*box-shadow:/);
-    expect(styles).toMatch(/\.collapsed-ticket-badge\s*{[^}]*top:\s*50%;/);
-    expect(styles).toMatch(/\.collapsed-ticket-badge\s*{[^}]*place-items:\s*center;/);
-    expect(styles).toMatch(/\.collapsed-ticket-badge\s*{[^}]*transform:\s*translateY\(-50%\);/);
+    expect(styles).not.toMatch(/\.collapsed-ticket-badge\s*{/);
     expect(styles).toMatch(/\.app-shell-left \.collapsed-panel-handle::before\s*{[^}]*left:\s*0;/);
     expect(styles).toMatch(/\.app-shell-right \.collapsed-panel-handle::before\s*{[^}]*right:\s*0;/);
     expect(styles).toMatch(/\.app-shell-left \.collapsed-panel-handle\s*{[^}]*left:\s*0;/);
     expect(styles).toMatch(/\.app-shell-right \.collapsed-panel-handle\s*{[^}]*right:\s*0;/);
-    expect(styles).toMatch(/\.app-shell-left \.collapsed-ticket-badge\s*{[^}]*left:\s*var\(--collapsed-edge-width\);/);
-    expect(styles).toMatch(/\.app-shell-right \.collapsed-ticket-badge\s*{[^}]*right:\s*var\(--collapsed-edge-width\);/);
     expect(styles).toMatch(
       /\.app-shell-collapsed\.app-shell-left,\s*\.app-shell-collapsed\.app-shell-right\s*{[^}]*border-right:\s*0;[^}]*border-left:\s*0;/
     );

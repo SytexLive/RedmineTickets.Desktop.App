@@ -4,7 +4,7 @@ use tauri::{AppHandle, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 use crate::settings::{DockSide, PanelSettings};
 
 const EXPANDED_WIDTH: f64 = 360.0;
-const COLLAPSED_WIDTH: f64 = 48.0;
+const COLLAPSED_WIDTH: f64 = 2.0;
 
 pub fn docked_window_position(
     monitor_x: f64,
@@ -339,11 +339,11 @@ mod tests {
             (1920.0, 1080.0),
             (8.0, 0.0),
             (1904.0, 1040.0),
-            48.0,
+            2.0,
             DockSide::Left,
         );
 
-        assert_eq!(position, (0.0, 0.0, 48.0, 1040.0));
+        assert_eq!(position, (0.0, 0.0, 2.0, 1040.0));
     }
 
     #[test]
@@ -353,11 +353,11 @@ mod tests {
             (1920.0, 1080.0),
             (0.0, 0.0),
             (1920.0, 1040.0),
-            48.0,
+            2.0,
             DockSide::Right,
         );
 
-        assert_eq!(position, (1872.0, 0.0, 48.0, 1040.0));
+        assert_eq!(position, (1918.0, 0.0, 2.0, 1040.0));
     }
 
     #[test]
@@ -367,6 +367,6 @@ mod tests {
 
     #[test]
     fn scales_logical_collapsed_width_to_physical_pixels() {
-        assert_eq!(scaled_dimension(COLLAPSED_WIDTH, 1.25), 60);
+        assert_eq!(scaled_dimension(COLLAPSED_WIDTH, 1.25), 3);
     }
 }

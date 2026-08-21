@@ -1021,6 +1021,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await screen.findByText("Existing ticket");
     fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
     const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
     fireEvent.change(within(dialog).getByLabelText("Titel"), {
@@ -1808,7 +1809,7 @@ describe("App", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("shows the open ticket count badge while collapsed", async () => {
+  it("keeps the open ticket count available on the collapsed edge handle", async () => {
     mockTicketApp({
       ticketBatches: [[
         ticketFixture(42, "First open ticket"),
@@ -1828,7 +1829,8 @@ describe("App", () => {
     });
 
     expect(screen.getByLabelText("2 offen")).toHaveClass("collapsed-panel-handle");
-    expect(screen.getByText("2")).toHaveClass("collapsed-ticket-badge");
+    expect(screen.getByLabelText("2 offen")).toHaveAttribute("title", "2 offen");
+    expect(screen.queryByText("2")).toBeNull();
     expect(screen.queryByText("First open ticket")).toBeNull();
   });
 });

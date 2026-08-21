@@ -90,33 +90,6 @@ textarea {
   right: 0;
 }
 
-.collapsed-ticket-badge {
-  position: absolute;
-  top: 50%;
-  display: grid;
-  place-items: center;
-  min-width: 30px;
-  height: 30px;
-  background: #1457a8;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1;
-  padding: 0 8px;
-  text-align: center;
-  transform: translateY(-50%);
-}
-
-.app-shell-left .collapsed-ticket-badge {
-  left: var(--collapsed-edge-width);
-  border-radius: 0 999px 999px 0;
-}
-
-.app-shell-right .collapsed-ticket-badge {
-  right: var(--collapsed-edge-width);
-  border-radius: 999px 0 0 999px;
-}
-
 .panel-header {
   display: flex;
   flex-direction: column;

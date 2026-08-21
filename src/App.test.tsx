@@ -618,6 +618,47 @@ describe("App", () => {
     });
   });
 
+  it("shows a loading progress bar while the selected ticket tab is loading", async () => {
+    const usersTicketsLoad = deferred<ReturnType<typeof ticketFixture>[]>();
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_open_tickets") {
+        return usersTicketsLoad.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+
+    expect(screen.getByRole("progressbar", { name: "Lädt" })).toBeInTheDocument();
+    expect(screen.queryByText("Keine offenen Tickets für Benutzer")).toBeNull();
+
+    await act(async () => {
+      usersTicketsLoad.resolve([
+        { ...ticketFixture(42, "Mina ticket"), assignee: "Mina Meyer", assigneeId: 7 }
+      ]);
+    });
+
+    expect(await screen.findByText("Mina Meyer")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
+  });
+
   it("opens the Redmine open-ticket list for a clicked assignee summary row", async () => {
     invokeMock.mockImplementation((command: string, args?: unknown) => {
       if (command === "dock_window") return Promise.resolve();

@@ -58,6 +58,7 @@ type TicketTabCacheEntry = {
 };
 
 type TicketTabCache = Record<TicketTab, TicketTabCacheEntry>;
+type TicketTabLoadingState = Record<TicketTab, boolean>;
 
 type TicketContextMenu = {
   ticket: Ticket;
@@ -146,6 +147,24 @@ function createEmptyTicketTabCache(): TicketTabCache {
   };
 }
 
+function createEmptyTicketTabLoadingState(): TicketTabLoadingState {
+  return {
+    "my-open": false,
+    watched: false,
+    created: false,
+    users: false
+  };
+}
+
+function createEmptyTicketTabLoadingCounts(): Record<TicketTab, number> {
+  return {
+    "my-open": 0,
+    watched: 0,
+    created: 0,
+    users: 0
+  };
+}
+
 function hasCachedTickets(cacheEntry: TicketTabCacheEntry) {
   return cacheEntry.loadedAt !== null;
 }
@@ -157,6 +176,9 @@ export function App() {
   const [activeTicketTab, setActiveTicketTab] = useState<TicketTab>("my-open");
   const [ticketTabCache, setTicketTabCache] = useState<TicketTabCache>(
     createEmptyTicketTabCache
+  );
+  const [ticketTabLoading, setTicketTabLoading] = useState<TicketTabLoadingState>(
+    createEmptyTicketTabLoadingState
   );
   const [ticketState, setTicketState] = useState<TicketNotificationState>({
     knownTicketIds: [],
@@ -204,13 +226,33 @@ export function App() {
   });
   const activeTicketTabRef = useRef<TicketTab>("my-open");
   const ticketTabCacheRef = useRef<TicketTabCache>(createEmptyTicketTabCache());
+  const ticketTabLoadingCountsRef = useRef<Record<TicketTab, number>>(
+    createEmptyTicketTabLoadingCounts()
+  );
   const hasInitializedTicketBaselineRef = useRef(false);
   const viewStateRef = useRef<ViewState>("loading");
+
+  const setTicketTabLoadingState = useCallback((ticketTab: TicketTab, loading: boolean) => {
+    const nextLoadingCount = loading
+      ? ticketTabLoadingCountsRef.current[ticketTab] + 1
+      : Math.max(0, ticketTabLoadingCountsRef.current[ticketTab] - 1);
+
+    ticketTabLoadingCountsRef.current = {
+      ...ticketTabLoadingCountsRef.current,
+      [ticketTab]: nextLoadingCount
+    };
+
+    setTicketTabLoading((currentLoading) => ({
+      ...currentLoading,
+      [ticketTab]: nextLoadingCount > 0
+    }));
+  }, []);
 
   const refreshTickets = useCallback(async (
     nextSettings: RedmineSettings,
     ticketTab: TicketTab = activeTicketTab
   ) => {
+    setTicketTabLoadingState(ticketTab, true);
     try {
       const loadedTickets = await fetchTicketsForTab(nextSettings, ticketTab);
       const nextCacheEntry = {
@@ -252,8 +294,10 @@ export function App() {
       if (viewStateRef.current !== "settings") {
         setViewState("tickets");
       }
+    } finally {
+      setTicketTabLoadingState(ticketTab, false);
     }
-  }, [activeTicketTab]);
+  }, [activeTicketTab, setTicketTabLoadingState]);
 
   const refreshTicketTabsInBackground = useCallback(async (
     nextSettings: RedmineSettings
@@ -771,6 +815,7 @@ export function App() {
   const t = createTranslator(language);
   const dockSide = settings?.dockSide ?? "right";
   const visibleError = error ? formatError(error, language) : null;
+  const activeTicketTabLoading = ticketTabLoading[activeTicketTab];
   const canCreateTicket =
     newTicketSubject.trim().length > 0 &&
     newTicketProjectId.length > 0 &&
@@ -889,7 +934,13 @@ export function App() {
             />
           ) : null}
 
-          {viewState === "tickets" && tickets.length === 0 ? (
+          {viewState === "tickets" && activeTicketTabLoading ? (
+            <div className="ticket-loading-progress" role="progressbar" aria-label={t("loading")}>
+              <span>{t("loading")}</span>
+            </div>
+          ) : null}
+
+          {viewState === "tickets" && tickets.length === 0 && !activeTicketTabLoading ? (
             <div className="status-panel">
               {activeTicketTab === "users" ? t("noOpenUsers") : t("noOpenTickets")}
             </div>

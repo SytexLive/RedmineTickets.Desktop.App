@@ -691,6 +691,34 @@ textarea {
   padding: 10px;
 }
 
+.ticket-loading-progress {
+  position: relative;
+  flex: 0 0 auto;
+  height: 4px;
+  overflow: hidden;
+  background: #dbeafe;
+}
+
+.ticket-loading-progress::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -42%;
+  width: 42%;
+  background: #1457a8;
+  content: "";
+  animation: ticket-loading-progress 1.05s ease-in-out infinite;
+}
+
+.ticket-loading-progress span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .user-ticket-summary-list {
   display: flex;
   width: 100%;
@@ -842,7 +870,18 @@ textarea {
   }
 }
 
+@keyframes ticket-loading-progress {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(338%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ticket-loading-progress::before,
   .ticket-row-unread,
   .ticket-row-unread::after {
     animation: none;

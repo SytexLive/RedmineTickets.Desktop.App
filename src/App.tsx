@@ -936,7 +936,8 @@ export function App() {
 
           {viewState === "tickets" && activeTicketTabLoading ? (
             <div className="ticket-loading-progress" role="progressbar" aria-label={t("loading")}>
-              <span>{t("loading")}</span>
+              <span>{t("ticketsLoading")}</span>
+              <div aria-hidden="true" className="ticket-loading-progress-track" />
             </div>
           ) : null}
 

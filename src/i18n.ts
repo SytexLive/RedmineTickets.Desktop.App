@@ -61,6 +61,7 @@ export type TranslationKey =
   | "statusId"
   | "test"
   | "testTicketNotificationSound"
+  | "ticketsLoading"
   | "ticketNumber"
   | "ticketNotifications"
   | "ticketNotificationVolume"
@@ -136,6 +137,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     statusId: "Status-ID",
     test: "Test",
     testTicketNotificationSound: "Ticketton testen",
+    ticketsLoading: "Tickets werden geladen",
     ticketNumber: "Ticketnummer",
     ticketNotifications: "Ticketton aktiv",
     ticketNotificationVolume: "Ticketton Lautstärke",
@@ -210,6 +212,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     statusId: "Status ID",
     test: "Test",
     testTicketNotificationSound: "Test ticket sound",
+    ticketsLoading: "Loading tickets",
     ticketNumber: "Ticket number",
     ticketNotifications: "Ticket sound enabled",
     ticketNotificationVolume: "Ticket sound volume",

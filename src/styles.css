@@ -693,13 +693,27 @@ textarea {
 
 .ticket-loading-progress {
   position: relative;
+  display: grid;
   flex: 0 0 auto;
-  height: 4px;
+  gap: 8px;
+  border-bottom: 1px solid #d9dee7;
+  background: #ffffff;
+  color: #1457a8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.ticket-loading-progress-track {
+  position: relative;
+  flex: 0 0 auto;
+  height: 6px;
+  border-radius: 999px;
   overflow: hidden;
   background: #dbeafe;
 }
 
-.ticket-loading-progress::before {
+.ticket-loading-progress-track::before {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -708,15 +722,6 @@ textarea {
   background: #1457a8;
   content: "";
   animation: ticket-loading-progress 1.05s ease-in-out infinite;
-}
-
-.ticket-loading-progress span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .user-ticket-summary-list {
@@ -881,7 +886,7 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticket-loading-progress::before,
+  .ticket-loading-progress-track::before,
   .ticket-row-unread,
   .ticket-row-unread::after {
     animation: none;

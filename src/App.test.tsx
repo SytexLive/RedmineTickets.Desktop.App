@@ -647,6 +647,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
 
     expect(screen.getByRole("progressbar", { name: "Lädt" })).toBeInTheDocument();
+    expect(screen.getByText("Tickets werden geladen")).toBeInTheDocument();
     expect(screen.queryByText("Keine offenen Tickets für Benutzer")).toBeNull();
 
     await act(async () => {

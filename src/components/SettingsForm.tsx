@@ -10,6 +10,7 @@ type SettingsFormProps = {
   initialSettings: RedmineSettings | null;
   monitors: MonitorInfo[];
   saving: boolean;
+  onCancel?: () => void;
   onSave: (settings: RedmineSettings) => void;
   onChange?: (settings: RedmineSettings) => void;
   onPreviewTicketNotificationSound?: (sound: string, volume: number) => void;
@@ -19,6 +20,7 @@ export function SettingsForm({
   initialSettings,
   monitors,
   saving,
+  onCancel,
   onSave,
   onChange,
   onPreviewTicketNotificationSound
@@ -213,9 +215,21 @@ export function SettingsForm({
           value={ticketNotificationVolume}
         />
       </label>
-      <button className="primary-action" disabled={saving} type="submit">
-        {saving ? t("saving") : t("save")}
-      </button>
+      <div className="settings-form-actions">
+        {onCancel ? (
+          <button
+            className="secondary-action"
+            disabled={saving}
+            type="button"
+            onClick={onCancel}
+          >
+            {t("cancel")}
+          </button>
+        ) : null}
+        <button className="primary-action" disabled={saving} type="submit">
+          {saving ? t("saving") : t("save")}
+        </button>
+      </div>
     </form>
   );
 }

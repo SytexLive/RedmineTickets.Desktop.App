@@ -1005,6 +1005,12 @@ textarea {
   gap: 8px;
 }
 
+.settings-form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
 .primary-action {
   height: 38px;
   border: 0;

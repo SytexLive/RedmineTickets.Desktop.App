@@ -905,6 +905,45 @@ describe("App", () => {
     expect(screen.getByText("Assigned ticket")).toBeInTheDocument();
   });
 
+  it("returns to tickets without saving settings edits", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen anzeigen" }));
+    fireEvent.change(screen.getByLabelText("Redmine URL"), {
+      target: { value: "https://draft.example.com" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+
+    expect(screen.queryByLabelText("Redmine URL")).toBeNull();
+    expect(screen.getByText("Assigned ticket")).toBeInTheDocument();
+    expect(invokeMock.mock.calls.some(([command]) => command === "save_settings")).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen anzeigen" }));
+
+    expect(screen.getByLabelText("Redmine URL")).toHaveValue(
+      "https://redmine.example.com"
+    );
+  });
+
   it("keeps unsaved settings edits when the panel collapses and expands", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();

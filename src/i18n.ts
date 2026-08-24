@@ -6,6 +6,7 @@ export type TranslationKey =
   | "assignTo"
   | "assignedToId"
   | "autostart"
+  | "cancel"
   | "closeCommentDialog"
   | "closeCreateTicketDialog"
   | "collapsePanel"
@@ -88,6 +89,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     assignTo: "Zuweisen an",
     assignedToId: "Zuweisung-ID",
     autostart: "Mit Windows starten",
+    cancel: "Abbrechen",
     closeCommentDialog: "Kommentardialog schlie\u00dfen",
     closeCreateTicketDialog: "Ticketdialog schlie\u00dfen",
     collapsePanel: "Panel einklappen",
@@ -169,6 +171,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     assignTo: "Assign to",
     assignedToId: "Assignee ID",
     autostart: "Start with Windows",
+    cancel: "Cancel",
     closeCommentDialog: "Close comment dialog",
     closeCreateTicketDialog: "Close ticket dialog",
     collapsePanel: "Collapse panel",

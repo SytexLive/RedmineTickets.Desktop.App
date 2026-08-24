@@ -560,6 +560,16 @@ export function App() {
     }
   }
 
+  function handleCancelSettings() {
+    if (!settings) {
+      return;
+    }
+
+    setSettingsDraft(settings);
+    setViewState("tickets");
+    setError(null);
+  }
+
   function markTicketAsRead(ticketId: number) {
     const nextTicketState = markTicketRead(ticketStateRef.current, ticketId);
     ticketStateRef.current = nextTicketState;
@@ -1022,6 +1032,7 @@ export function App() {
               initialSettings={settingsDraft ?? settings}
               monitors={monitors}
               onChange={setSettingsDraft}
+              onCancel={settings ? handleCancelSettings : undefined}
               onSave={handleSave}
               onPreviewTicketNotificationSound={(sound, volume) =>
                 playTicketNotificationSound({ enabled: true, volume, sound })

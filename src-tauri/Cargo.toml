@@ -1,6 +1,6 @@
 [package]
 name = "redmine-tickets-desktop-app"
-version = "0.4.2"
+version = "0.4.3"
 description = "Right-docked Redmine ticket side panel for Windows"
 authors = ["SytexLive"]
 edition = "2021"

@@ -5,6 +5,8 @@ export type TranslationKey =
   | "apiKey"
   | "assignTo"
   | "assignedToId"
+  | "accentColor"
+  | "accentColorHex"
   | "autostart"
   | "cancel"
   | "allCustomers"
@@ -92,6 +94,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     apiKey: "API-Schl\u00fcssel",
     assignTo: "Zuweisen an",
     assignedToId: "Zuweisung-ID",
+    accentColor: "Akzentfarbe",
+    accentColorHex: "Akzentfarbe Hex-Code",
     autostart: "Mit Windows starten",
     cancel: "Abbrechen",
     allCustomers: "Alle Kunden",
@@ -178,6 +182,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     apiKey: "API key",
     assignTo: "Assign to",
     assignedToId: "Assignee ID",
+    accentColor: "Accent color",
+    accentColorHex: "Accent color hex code",
     autostart: "Start with Windows",
     cancel: "Cancel",
     allCustomers: "All customers",
@@ -285,6 +291,7 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Could not size panel": "Panel-Gro\u00dfe konnte nicht gesetzt werden",
     "Could not update Windows autostart":
       "Windows-Autostart konnte nicht aktualisiert werden",
+    "Invalid accent color": "Ung\u00fcltige Akzentfarbe",
     "Invalid Redmine URL": "Ung\u00fcltige Redmine URL",
     "Invalid ticket notification sound": "Ung\u00fcltiger Ticketton",
     "Invalid ticket URL": "Ung\u00fcltige Ticket-URL",

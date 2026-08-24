@@ -8,6 +8,7 @@ export type RedmineSettings = {
   dockSide: "left" | "right";
   refreshIntervalSeconds: number;
   language: "de" | "en";
+  accentColor?: string;
   autostartEnabled: boolean;
   ticketNotificationsEnabled: boolean;
   ticketNotificationVolume: number;

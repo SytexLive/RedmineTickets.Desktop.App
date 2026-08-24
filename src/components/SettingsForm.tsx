@@ -5,6 +5,7 @@ import {
   DEFAULT_TICKET_NOTIFICATION_SOUND,
   TICKET_NOTIFICATION_SOUNDS
 } from "../notifications/soundOptions";
+import { DEFAULT_ACCENT_COLOR, normalizeAccentColor } from "../theme";
 
 type SettingsFormProps = {
   initialSettings: RedmineSettings | null;
@@ -37,6 +38,9 @@ export function SettingsForm({
     String(initialSettings?.refreshIntervalSeconds ?? 60)
   );
   const [language, setLanguage] = useState<Language>(initialSettings?.language ?? "de");
+  const [accentColor, setAccentColor] = useState(
+    normalizeAccentColor(initialSettings?.accentColor ?? DEFAULT_ACCENT_COLOR)
+  );
   const [autostartEnabled, setAutostartEnabled] = useState(
     initialSettings?.autostartEnabled ?? false
   );
@@ -57,6 +61,7 @@ export function SettingsForm({
     dockSide,
     refreshIntervalSeconds: Number(refreshIntervalSeconds),
     language,
+    accentColor: normalizeAccentColor(accentColor),
     autostartEnabled,
     ticketNotificationsEnabled,
     ticketNotificationVolume: Number(ticketNotificationVolume),
@@ -68,6 +73,7 @@ export function SettingsForm({
   }, [
     apiKey,
     baseUrl,
+    accentColor,
     dockSide,
     language,
     autostartEnabled,
@@ -162,6 +168,27 @@ export function SettingsForm({
           <option value="de">Deutsch</option>
           <option value="en">English</option>
         </select>
+      </label>
+      <label>
+        <span>{t("accentColor")}</span>
+        <div className="settings-color-control">
+          <input
+            aria-label={t("accentColor")}
+            onChange={(event) => setAccentColor(event.target.value)}
+            type="color"
+            value={normalizeAccentColor(accentColor)}
+          />
+          <input
+            aria-label={t("accentColorHex")}
+            inputMode="text"
+            maxLength={7}
+            onChange={(event) => setAccentColor(event.target.value)}
+            pattern="#[0-9a-fA-F]{6}"
+            spellCheck={false}
+            type="text"
+            value={accentColor}
+          />
+        </div>
       </label>
       <label className="settings-checkbox">
         <input

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import {
   addTicketComment,
   assignTicket,
@@ -54,6 +54,7 @@ import { applyTicketRefresh, markTicketRead } from "./domain/ticketNotifications
 import { summarizeOpenTicketsByAssignee } from "./domain/ticketUsers";
 import { createTranslator, formatError, type Language } from "./i18n";
 import { playTicketNotificationSound } from "./notifications/sound";
+import { normalizeAccentColor } from "./theme";
 
 type ViewState = "loading" | "settings" | "tickets";
 type TicketTab = "my-open" | "watched" | "created" | "users";
@@ -897,6 +898,8 @@ export function App() {
   const language: Language = settings?.language ?? "de";
   const t = createTranslator(language);
   const dockSide = settings?.dockSide ?? "right";
+  const accentColor = normalizeAccentColor(settingsDraft?.accentColor ?? settings?.accentColor);
+  const appStyle = { "--accent-color": accentColor } as CSSProperties;
   const visibleError = error ? formatError(error, language) : null;
   const updateMessage =
     updateStatus === "checking"
@@ -924,6 +927,7 @@ export function App() {
   return (
     <main
       className={`app-shell app-shell-${dockSide}${collapsed ? " app-shell-collapsed" : ""}`}
+      style={appStyle}
       onMouseEnter={collapsed ? undefined : handlePanelMouseEnter}
       onMouseLeave={handlePanelMouseLeave}
     >

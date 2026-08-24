@@ -16,6 +16,7 @@ describe("SettingsForm", () => {
           dockSide: "left",
           refreshIntervalSeconds: 120,
           language: "de",
+          accentColor: "#1457a8",
           autostartEnabled: false,
           ticketNotificationsEnabled: true,
           ticketNotificationVolume: 0.35,
@@ -47,6 +48,9 @@ describe("SettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Ticketton"), {
       target: { value: "ring.mp3" }
     });
+    fireEvent.change(screen.getByLabelText("Akzentfarbe Hex-Code"), {
+      target: { value: "#0f766e" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "Ticketton testen" }));
     fireEvent.click(screen.getByLabelText("Mit Windows starten"));
     fireEvent.change(screen.getByLabelText("Sprache"), {
@@ -61,6 +65,7 @@ describe("SettingsForm", () => {
       dockSide: "right",
       refreshIntervalSeconds: 45,
       language: "en",
+      accentColor: "#0f766e",
       autostartEnabled: true,
       ticketNotificationsEnabled: false,
       ticketNotificationVolume: 0.6,

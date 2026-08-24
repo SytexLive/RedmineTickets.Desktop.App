@@ -26,6 +26,15 @@ pub fn default_autostart_enabled() -> bool {
     false
 }
 
+pub fn default_accent_color() -> String {
+    "#1457a8".to_string()
+}
+
+fn is_valid_hex_color(color: &str) -> bool {
+    let bytes = color.as_bytes();
+    bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(|byte| byte.is_ascii_hexdigit())
+}
+
 const TICKET_NOTIFICATION_SOUNDS: [&str; 8] = [
     "alert.mp3",
     "amongus.mp3",
@@ -94,6 +103,8 @@ pub struct RedmineSettings {
     pub refresh_interval_seconds: u64,
     #[serde(default)]
     pub language: Language,
+    #[serde(default = "default_accent_color")]
+    pub accent_color: String,
     #[serde(default = "default_autostart_enabled")]
     pub autostart_enabled: bool,
     #[serde(default = "default_ticket_notifications_enabled")]
@@ -123,6 +134,10 @@ impl RedmineSettings {
 
         if self.refresh_interval_seconds < 15 {
             return Err("Refresh interval must be at least 15 seconds".to_string());
+        }
+
+        if !is_valid_hex_color(&self.accent_color) {
+            return Err("Invalid accent color".to_string());
         }
 
         if !(0.0..=1.0).contains(&self.ticket_notification_volume) {
@@ -191,6 +206,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
@@ -209,6 +225,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
@@ -231,7 +248,27 @@ mod tests {
         assert_eq!(settings.dock_side, DockSide::Right);
         assert_eq!(settings.refresh_interval_seconds, 60);
         assert_eq!(settings.language, Language::De);
+        assert_eq!(settings.accent_color, "#1457a8");
         assert_eq!(settings.ticket_notification_sound, "default.mp3");
+    }
+
+    #[test]
+    fn rejects_invalid_accent_color() {
+        let settings = RedmineSettings {
+            base_url: "https://redmine.example.com".to_string(),
+            api_key: "secret".to_string(),
+            monitor_index: 0,
+            dock_side: DockSide::Right,
+            refresh_interval_seconds: default_refresh_interval_seconds(),
+            language: Language::De,
+            accent_color: "blue".to_string(),
+            autostart_enabled: false,
+            ticket_notifications_enabled: true,
+            ticket_notification_volume: default_ticket_notification_volume(),
+            ticket_notification_sound: default_ticket_notification_sound(),
+        };
+
+        assert_eq!(settings.validate().unwrap_err(), "Invalid accent color");
     }
 
     #[test]
@@ -263,6 +300,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: 5,
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
@@ -284,6 +322,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: -0.1,
@@ -305,6 +344,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: 1.1,
@@ -326,6 +366,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
@@ -344,6 +385,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            accent_color: default_accent_color(),
             autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),

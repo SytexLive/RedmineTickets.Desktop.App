@@ -1,3 +1,5 @@
+mod autostart;
+mod logging;
 mod redmine;
 mod settings;
 mod ticket_state;
@@ -17,9 +19,14 @@ fn ping() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    logging::install_panic_hook();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            logging::init(app.handle());
+            logging::log_info("Application setup started");
+
             let show_hide =
                 MenuItem::with_id(app, "show_hide", "Anzeigen/Ausblenden", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Beenden", true, None::<&str>)?;
@@ -68,9 +75,14 @@ pub fn run() {
                 .build(app)?;
 
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window::dock_webview_window(&window, settings::PanelSettings::default());
+                if let Err(err) =
+                    window::dock_webview_window(&window, settings::PanelSettings::default())
+                {
+                    logging::log_error(&format!("Initial panel docking failed: {err}"));
+                }
             }
 
+            logging::log_info("Application setup completed");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

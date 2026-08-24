@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+use crate::{autostart, logging};
+
 pub fn default_refresh_interval_seconds() -> u64 {
     60
 }
@@ -18,6 +20,10 @@ pub fn default_ticket_notification_volume() -> f64 {
 
 pub fn default_ticket_notification_sound() -> String {
     "default.mp3".to_string()
+}
+
+pub fn default_autostart_enabled() -> bool {
+    false
 }
 
 const TICKET_NOTIFICATION_SOUNDS: [&str; 8] = [
@@ -88,6 +94,8 @@ pub struct RedmineSettings {
     pub refresh_interval_seconds: u64,
     #[serde(default)]
     pub language: Language,
+    #[serde(default = "default_autostart_enabled")]
+    pub autostart_enabled: bool,
     #[serde(default = "default_ticket_notifications_enabled")]
     pub ticket_notifications_enabled: bool,
     #[serde(default = "default_ticket_notification_volume")]
@@ -146,14 +154,24 @@ pub fn load_settings(app: AppHandle) -> Result<Option<RedmineSettings>, String> 
     }
 
     let content = fs::read_to_string(path).map_err(|_| "Could not read settings".to_string())?;
-    let settings =
-        serde_json::from_str(&content).map_err(|_| "Could not parse settings".to_string())?;
+    let settings = serde_json::from_str(&content).map_err(|_| {
+        logging::log_error("Could not parse settings");
+        "Could not parse settings".to_string()
+    })?;
     Ok(Some(settings))
 }
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, settings: RedmineSettings) -> Result<(), String> {
     settings.validate()?;
+    let exe_path = std::env::current_exe().map_err(|_| {
+        logging::log_error("Could not resolve current executable for autostart");
+        "Could not update Windows autostart".to_string()
+    })?;
+    autostart::set_enabled(settings.autostart_enabled, &exe_path).map_err(|err| {
+        logging::log_error(&err);
+        err
+    })?;
     let path = settings_path(&app)?;
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|_| "Could not serialize settings".to_string())?;
@@ -173,6 +191,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
             ticket_notification_sound: default_ticket_notification_sound(),
@@ -190,6 +209,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
             ticket_notification_sound: default_ticket_notification_sound(),
@@ -226,6 +246,15 @@ mod tests {
     }
 
     #[test]
+    fn applies_default_autostart_setting_for_legacy_config() {
+        let settings: RedmineSettings =
+            serde_json::from_str(r#"{"baseUrl":"https://redmine.example.com","apiKey":"secret"}"#)
+                .unwrap();
+
+        assert_eq!(settings.autostart_enabled, false);
+    }
+
+    #[test]
     fn rejects_refresh_interval_below_minimum() {
         let settings = RedmineSettings {
             base_url: "https://redmine.example.com".to_string(),
@@ -234,6 +263,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: 5,
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
             ticket_notification_sound: default_ticket_notification_sound(),
@@ -254,6 +284,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: -0.1,
             ticket_notification_sound: default_ticket_notification_sound(),
@@ -274,6 +305,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: 1.1,
             ticket_notification_sound: default_ticket_notification_sound(),
@@ -294,6 +326,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
             ticket_notification_sound: "ring.mp3".to_string(),
@@ -311,6 +344,7 @@ mod tests {
             dock_side: DockSide::Right,
             refresh_interval_seconds: default_refresh_interval_seconds(),
             language: Language::De,
+            autostart_enabled: false,
             ticket_notifications_enabled: true,
             ticket_notification_volume: default_ticket_notification_volume(),
             ticket_notification_sound: "missing.mp3".to_string(),

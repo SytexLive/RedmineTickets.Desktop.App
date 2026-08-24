@@ -1,0 +1,2 @@
+8b742d51e96c54e679bfa18b03f5c036f577ffc8f21fc58d3f6a3a1f249c7e5c  Redmine Tickets 0.3.7.exe
+dcaed5c80b2b1bb51bf93da8a0773b5bf9c1aebe245caa838f5f885f31f4df4a  Redmine Tickets 0.3.7 Setup.exe

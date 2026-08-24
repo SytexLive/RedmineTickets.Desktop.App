@@ -35,6 +35,9 @@ export function SettingsForm({
     String(initialSettings?.refreshIntervalSeconds ?? 60)
   );
   const [language, setLanguage] = useState<Language>(initialSettings?.language ?? "de");
+  const [autostartEnabled, setAutostartEnabled] = useState(
+    initialSettings?.autostartEnabled ?? false
+  );
   const [ticketNotificationsEnabled, setTicketNotificationsEnabled] = useState(
     initialSettings?.ticketNotificationsEnabled ?? true
   );
@@ -52,6 +55,7 @@ export function SettingsForm({
     dockSide,
     refreshIntervalSeconds: Number(refreshIntervalSeconds),
     language,
+    autostartEnabled,
     ticketNotificationsEnabled,
     ticketNotificationVolume: Number(ticketNotificationVolume),
     ticketNotificationSound
@@ -64,6 +68,7 @@ export function SettingsForm({
     baseUrl,
     dockSide,
     language,
+    autostartEnabled,
     monitorIndex,
     onChange,
     refreshIntervalSeconds,
@@ -155,6 +160,14 @@ export function SettingsForm({
           <option value="de">Deutsch</option>
           <option value="en">English</option>
         </select>
+      </label>
+      <label className="settings-checkbox">
+        <input
+          checked={autostartEnabled}
+          onChange={(event) => setAutostartEnabled(event.target.checked)}
+          type="checkbox"
+        />
+        <span>{t("autostart")}</span>
       </label>
       <label className="settings-checkbox">
         <input

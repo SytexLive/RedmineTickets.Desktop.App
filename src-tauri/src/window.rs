@@ -1,6 +1,7 @@
 use serde::Serialize;
 use tauri::{AppHandle, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
+use crate::logging;
 use crate::settings::{DockSide, PanelSettings};
 
 const EXPANDED_WIDTH: f64 = 360.0;
@@ -125,6 +126,18 @@ fn order_monitors(
     primary
 }
 
+fn selected_monitor_index(monitor_count: usize, requested_index: usize) -> Option<usize> {
+    if monitor_count == 0 {
+        return None;
+    }
+
+    Some(if requested_index < monitor_count {
+        requested_index
+    } else {
+        0
+    })
+}
+
 #[tauri::command]
 pub fn list_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, String> {
     let primary_position = primary_monitor_position(&app)?;
@@ -166,7 +179,11 @@ fn selected_monitor(window: &WebviewWindow, settings: PanelSettings) -> Result<M
         primary_position,
     );
 
-    if let Some(monitor) = monitors.into_iter().nth(settings.monitor_index) {
+    if let Some(monitor_index) = selected_monitor_index(monitors.len(), settings.monitor_index) {
+        let monitor = monitors
+            .into_iter()
+            .nth(monitor_index)
+            .ok_or_else(|| "No monitor found".to_string())?;
         return Ok(monitor);
     }
 
@@ -216,12 +233,18 @@ pub fn dock_webview_window(window: &WebviewWindow, settings: PanelSettings) -> R
 
 #[tauri::command]
 pub fn dock_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
-    dock_webview_window(&window, settings.unwrap_or_default())
+    dock_webview_window(&window, settings.unwrap_or_default()).map_err(|err| {
+        logging::log_error(&format!("Dock panel failed: {err}"));
+        err
+    })
 }
 
 #[tauri::command]
 pub fn expand_window(window: WebviewWindow, settings: Option<PanelSettings>) -> Result<(), String> {
-    dock_webview_window(&window, settings.unwrap_or_default())
+    dock_webview_window(&window, settings.unwrap_or_default()).map_err(|err| {
+        logging::log_error(&format!("Expand panel failed: {err}"));
+        err
+    })
 }
 
 #[tauri::command]
@@ -230,7 +253,10 @@ pub fn collapse_window(
     settings: Option<PanelSettings>,
 ) -> Result<(), String> {
     let settings = settings.unwrap_or_default();
-    let monitor = selected_monitor(&window, settings)?;
+    let monitor = selected_monitor(&window, settings).map_err(|err| {
+        logging::log_error(&format!("Collapse panel monitor selection failed: {err}"));
+        err
+    })?;
     let monitor_size = monitor.size();
     let monitor_position = monitor.position();
     let work_area = monitor.work_area();
@@ -247,19 +273,29 @@ pub fn collapse_window(
         settings.dock_side,
     );
 
-    window
-        .set_always_on_top(true)
-        .map_err(|_| "Could not keep panel on top".to_string())?;
-    remove_window_shadow(&window)?;
+    window.set_always_on_top(true).map_err(|_| {
+        logging::log_error("Could not keep collapsed panel on top");
+        "Could not keep panel on top".to_string()
+    })?;
+    remove_window_shadow(&window).map_err(|err| {
+        logging::log_error(&err);
+        err
+    })?;
     window
         .set_size(PhysicalSize::new(
             width.round() as u32,
             height.round() as u32,
         ))
-        .map_err(|_| "Could not collapse panel".to_string())?;
+        .map_err(|_| {
+            logging::log_error("Could not collapse panel");
+            "Could not collapse panel".to_string()
+        })?;
     window
         .set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32))
-        .map_err(|_| "Could not position collapsed panel".to_string())?;
+        .map_err(|_| {
+            logging::log_error("Could not position collapsed panel");
+            "Could not position collapsed panel".to_string()
+        })?;
 
     Ok(())
 }
@@ -368,5 +404,20 @@ mod tests {
     #[test]
     fn scales_logical_collapsed_width_to_physical_pixels() {
         assert_eq!(scaled_dimension(COLLAPSED_WIDTH, 1.25), 3);
+    }
+
+    #[test]
+    fn selects_requested_monitor_when_available() {
+        assert_eq!(selected_monitor_index(2, 1), Some(1));
+    }
+
+    #[test]
+    fn falls_back_to_first_monitor_when_saved_index_is_unavailable() {
+        assert_eq!(selected_monitor_index(1, 2), Some(0));
+    }
+
+    #[test]
+    fn returns_no_monitor_when_none_are_available() {
+        assert_eq!(selected_monitor_index(0, 0), None);
     }
 }

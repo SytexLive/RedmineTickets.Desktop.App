@@ -5,6 +5,7 @@ export type TranslationKey =
   | "apiKey"
   | "assignTo"
   | "assignedToId"
+  | "autostart"
   | "closeCommentDialog"
   | "closeCreateTicketDialog"
   | "collapsePanel"
@@ -81,6 +82,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     apiKey: "API-Schl\u00fcssel",
     assignTo: "Zuweisen an",
     assignedToId: "Zuweisung-ID",
+    autostart: "Mit Windows starten",
     closeCommentDialog: "Kommentardialog schlie\u00dfen",
     closeCreateTicketDialog: "Ticketdialog schlie\u00dfen",
     collapsePanel: "Panel einklappen",
@@ -156,6 +158,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     apiKey: "API key",
     assignTo: "Assign to",
     assignedToId: "Assignee ID",
+    autostart: "Start with Windows",
     closeCommentDialog: "Close comment dialog",
     closeCreateTicketDialog: "Close ticket dialog",
     collapsePanel: "Collapse panel",
@@ -250,6 +253,8 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Could not serialize settings": "Einstellungen konnten nicht serialisiert werden",
     "Could not show panel": "Panel konnte nicht angezeigt werden",
     "Could not size panel": "Panel-Gro\u00dfe konnte nicht gesetzt werden",
+    "Could not update Windows autostart":
+      "Windows-Autostart konnte nicht aktualisiert werden",
     "Invalid Redmine URL": "Ung\u00fcltige Redmine URL",
     "Invalid ticket notification sound": "Ung\u00fcltiger Ticketton",
     "Invalid ticket URL": "Ung\u00fcltige Ticket-URL",

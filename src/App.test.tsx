@@ -12,6 +12,7 @@ function settingsFixture() {
     dockSide: "right" as "left" | "right",
     refreshIntervalSeconds: 15,
     language: "de" as "de" | "en",
+    autostartEnabled: false,
     ticketNotificationsEnabled: true,
     ticketNotificationVolume: 0.35,
     ticketNotificationSound: "default.mp3"

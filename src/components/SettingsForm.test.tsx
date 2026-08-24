@@ -16,6 +16,7 @@ describe("SettingsForm", () => {
           dockSide: "left",
           refreshIntervalSeconds: 120,
           language: "de",
+          autostartEnabled: false,
           ticketNotificationsEnabled: true,
           ticketNotificationVolume: 0.35,
           ticketNotificationSound: "default.mp3"
@@ -47,6 +48,7 @@ describe("SettingsForm", () => {
       target: { value: "ring.mp3" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Ticketton testen" }));
+    fireEvent.click(screen.getByLabelText("Mit Windows starten"));
     fireEvent.change(screen.getByLabelText("Sprache"), {
       target: { value: "en" }
     });
@@ -59,6 +61,7 @@ describe("SettingsForm", () => {
       dockSide: "right",
       refreshIntervalSeconds: 45,
       language: "en",
+      autostartEnabled: true,
       ticketNotificationsEnabled: false,
       ticketNotificationVolume: 0.6,
       ticketNotificationSound: "ring.mp3"

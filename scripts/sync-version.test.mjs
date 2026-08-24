@@ -76,6 +76,23 @@ describe("sync-version CLI", () => {
     ).toBe("1.2.3");
   });
 
+  it("succeeds when files already contain the requested version", () => {
+    const fixtureRoot = createFixture();
+
+    const firstResult = spawnSync("node", ["scripts/sync-version.mjs", "1.2.3"], {
+      cwd: fixtureRoot,
+      encoding: "utf8"
+    });
+    const secondResult = spawnSync("node", ["scripts/sync-version.mjs", "1.2.3"], {
+      cwd: fixtureRoot,
+      encoding: "utf8"
+    });
+
+    expect(firstResult.status).toBe(0);
+    expect(secondResult.status).toBe(0);
+    expect(secondResult.stderr).toBe("");
+  });
+
   it("fails with usage output for an invalid version", () => {
     const fixtureRoot = createFixture();
 

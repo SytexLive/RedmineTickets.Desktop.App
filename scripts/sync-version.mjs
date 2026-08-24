@@ -29,15 +29,17 @@ function writePackageLockVersion(path) {
 
 function writeCargoVersion(path) {
   const content = fs.readFileSync(path, "utf8");
-  const nextContent = content.replace(
-    /^version = "\d+\.\d+\.\d+"/m,
-    `version = "${nextVersion}"`
-  );
+  const versionPattern = /^version = "\d+\.\d+\.\d+"/m;
 
-  if (nextContent === content) {
+  if (!versionPattern.test(content)) {
     console.error(`Could not find package version in ${path}`);
     process.exit(1);
   }
+
+  const nextContent = content.replace(
+    versionPattern,
+    `version = "${nextVersion}"`
+  );
 
   fs.writeFileSync(path, nextContent);
 }

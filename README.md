@@ -25,6 +25,7 @@ full Redmine UI.
 - Tray icon with show/hide and quit actions.
 - Ticket context menu for opening tickets, changing status, adding comments, and
   assigning users.
+- Signed Tauri updater integration with startup and manual update checks.
 
 ## Prerequisites
 
@@ -95,6 +96,18 @@ versioned output folder under `release/`, for example
 `release/Redmine Tickets 0.2.0/`. Include the portable app EXE, setup EXE, and
 `SHA256SUMS.txt` from that folder when publishing a release.
 
+Application updates use the official Tauri v2 updater. The production updater
+metadata is published as `latest.json` on GitHub Releases by
+`.github/workflows/release.yml`. See `docs/app-updates.md` before changing the
+updater, release workflow, signing keys, or installer targets.
+
+The release workflow requires these GitHub repository secrets:
+
+```text
+TAURI_SIGNING_PRIVATE_KEY
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+```
+
 ## Branching
 
 - `main` is the stable default branch for the project.
@@ -118,6 +131,9 @@ On first launch, open the settings view and enter:
 Settings are persisted in the app configuration directory as
 `redmine-settings.json`. Ticket notification state is persisted separately as
 `ticket-notification-state.json`.
+
+Updater configuration is compiled from `src-tauri/tauri.conf.json`; the private
+updater signing key is not stored in the repository.
 
 ## Redmine API Usage
 
@@ -167,4 +183,4 @@ scripts/             Utility scripts
 - The app is primarily designed for Windows.
 - Ticket editing is limited to status, comments, and assignee changes.
 - Time tracking is not implemented.
-- Auto-update and installer signing are not configured.
+- Windows code signing for SmartScreen reputation is not configured.

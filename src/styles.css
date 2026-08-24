@@ -165,6 +165,36 @@ textarea {
   cursor: pointer;
 }
 
+.header-actions button:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+
+.update-banner {
+  margin: 0;
+  padding: 7px 12px;
+  border-bottom: 1px solid #d9dee7;
+  background: #eef6ff;
+  color: #17446f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.update-banner-current {
+  background: #eef8f3;
+  color: #1b6848;
+}
+
+.update-banner-installed {
+  background: #f1f7e8;
+  color: #46650f;
+}
+
+.update-banner-error {
+  background: #fff1f1;
+  color: #9a2d2d;
+}
+
 .ticket-context-menu {
   position: fixed;
   z-index: 20;

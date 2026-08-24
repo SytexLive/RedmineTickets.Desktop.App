@@ -33,10 +33,12 @@ import {
   type TicketNotificationState,
   updateTicketStatus
 } from "./api/redmine";
+import { checkAndInstallUpdate } from "./appUpdates";
 import { SettingsForm } from "./components/SettingsForm";
 import { TicketList } from "./components/TicketList";
 import {
   ChevronDownIcon,
+  DownloadIcon,
   PinIcon,
   PlusIcon,
   RefreshIcon,
@@ -55,6 +57,7 @@ import { playTicketNotificationSound } from "./notifications/sound";
 
 type ViewState = "loading" | "settings" | "tickets";
 type TicketTab = "my-open" | "watched" | "created" | "users";
+type UpdateStatus = "idle" | "checking" | "current" | "installed" | "error";
 
 type TicketTabCacheEntry = {
   tickets: Ticket[];
@@ -191,6 +194,8 @@ export function App() {
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [installedUpdateVersion, setInstalledUpdateVersion] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [pinned, setPinned] = useState(loadPinnedPanelState);
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
@@ -234,6 +239,7 @@ export function App() {
     createEmptyTicketTabLoadingCounts()
   );
   const hasInitializedTicketBaselineRef = useRef(false);
+  const updateCheckStartedRef = useRef(false);
   const viewStateRef = useRef<ViewState>("loading");
 
   const setTicketTabLoadingState = useCallback((ticketTab: TicketTab, loading: boolean) => {
@@ -320,6 +326,30 @@ export function App() {
     );
   }, [refreshTickets]);
 
+  const handleCheckForUpdates = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) {
+      setUpdateStatus("checking");
+    }
+
+    try {
+      const result = await checkAndInstallUpdate();
+      if (result.status === "installed") {
+        setInstalledUpdateVersion(result.version);
+        setUpdateStatus("installed");
+        return;
+      }
+
+      if (!options.silent) {
+        setUpdateStatus("current");
+      }
+    } catch (err) {
+      if (!options.silent) {
+        setUpdateStatus("error");
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    }
+  }, []);
+
   const refreshIssueStatuses = useCallback(async (nextSettings: RedmineSettings) => {
     try {
       const loadedStatuses = await fetchIssueStatuses(nextSettings);
@@ -375,6 +405,11 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
+    if (!updateCheckStartedRef.current) {
+      updateCheckStartedRef.current = true;
+      void handleCheckForUpdates({ silent: true });
+    }
+
     listMonitors()
       .then(setMonitors)
       .catch(() => setMonitors([]));
@@ -413,7 +448,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refreshIssueStatuses, refreshTicketCreateOptions, refreshTickets]);
+  }, [handleCheckForUpdates, refreshIssueStatuses, refreshTicketCreateOptions, refreshTickets]);
 
   useEffect(() => {
     viewStateRef.current = viewState;
@@ -833,6 +868,16 @@ export function App() {
   const t = createTranslator(language);
   const dockSide = settings?.dockSide ?? "right";
   const visibleError = error ? formatError(error, language) : null;
+  const updateMessage =
+    updateStatus === "checking"
+      ? t("updateChecking")
+      : updateStatus === "current"
+        ? t("updateCurrent")
+        : updateStatus === "installed" && installedUpdateVersion
+          ? t("updateInstalled").replace("{version}", installedUpdateVersion)
+          : updateStatus === "error"
+            ? t("updateFailed")
+            : null;
   const activeTicketTabLoading = ticketTabLoading[activeTicketTab];
   const canCreateTicket =
     newTicketSubject.trim().length > 0 &&
@@ -892,6 +937,17 @@ export function App() {
                   <RefreshIcon />
                 </button>
                 <button
+                  aria-label={t("checkForUpdates")}
+                  disabled={updateStatus === "checking"}
+                  title={t("checkForUpdates")}
+                  type="button"
+                  onClick={() => {
+                    void handleCheckForUpdates();
+                  }}
+                >
+                  <DownloadIcon />
+                </button>
+                <button
                   aria-label={t("showSettings")}
                   title={t("showSettings")}
                   type="button"
@@ -930,6 +986,10 @@ export function App() {
               />
             </label>
           </header>
+
+          {updateMessage ? (
+            <div className={`update-banner update-banner-${updateStatus}`}>{updateMessage}</div>
+          ) : null}
 
           {visibleError ? <div className="error-banner">{visibleError}</div> : null}
 

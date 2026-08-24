@@ -3,9 +3,9 @@ import { getNextReleaseVersion, getVersionCommitRange } from "./prepare-release.
 import { getReleaseType, incrementVersion } from "./release-version.mjs";
 
 describe("release version calculation", () => {
-  it("does not release for non-semantic commits", () => {
-    expect(getReleaseType(["docs: update readme", "chore: tidy config"])).toBeNull();
-    expect(incrementVersion("0.1.0", null)).toBe("0.1.0");
+  it("uses patch releases for non-semantic commits", () => {
+    expect(getReleaseType(["docs: update readme", "chore: tidy config"])).toBe("patch");
+    expect(incrementVersion("0.1.0", "patch")).toBe("0.1.1");
   });
 
   it("uses the highest conventional commit level once per release", () => {
@@ -42,16 +42,16 @@ describe("release preparation", () => {
     });
   });
 
-  it("keeps the current version when no release commit is present", () => {
+  it("uses patch releases when no conventional release commit is present", () => {
     expect(
       getNextReleaseVersion({
         baseVersion: "0.2.0",
         commitMessages: ["Update ticket view"],
       })
     ).toEqual({
-      changed: false,
-      releaseType: null,
-      version: "0.2.0",
+      changed: true,
+      releaseType: "patch",
+      version: "0.2.1",
     });
   });
 

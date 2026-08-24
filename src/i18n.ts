@@ -23,6 +23,7 @@ export type TranslationKey =
   | "errorPrefix"
   | "expandPanel"
   | "createdTicketsTab"
+  | "checkForUpdates"
   | "language"
   | "loading"
   | "myOpenTicketsTab"
@@ -73,6 +74,10 @@ export type TranslationKey =
   | "trackerId"
   | "unassignedUser"
   | "unpinPanel"
+  | "updateChecking"
+  | "updateCurrent"
+  | "updateInstalled"
+  | "updateFailed"
   | "usersTab"
   | "watchedTicketsTab";
 
@@ -100,6 +105,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     errorPrefix: "Redmine-Fehler",
     expandPanel: "Panel ausklappen",
     createdTicketsTab: "Erstellte Tickets",
+    checkForUpdates: "Nach Updates suchen",
     language: "Sprache",
     loading: "L\u00e4dt",
     myOpenTicketsTab: "Meine offenen Tickets",
@@ -150,6 +156,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker-ID",
     unassignedUser: "Nicht zugewiesen",
     unpinPanel: "Panel l\u00f6sen",
+    updateChecking: "Updates werden gepr\u00fcft",
+    updateCurrent: "App ist aktuell",
+    updateInstalled: "Update {version} installiert",
+    updateFailed: "Update-Pr\u00fcfung fehlgeschlagen",
     usersTab: "Benutzer",
     watchedTicketsTab: "Beobachtete Tickets"
   },
@@ -176,6 +186,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     errorPrefix: "Redmine error",
     expandPanel: "Expand panel",
     createdTicketsTab: "Created tickets",
+    checkForUpdates: "Check for updates",
     language: "Language",
     loading: "Loading",
     myOpenTicketsTab: "My open tickets",
@@ -226,6 +237,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker ID",
     unassignedUser: "Unassigned",
     unpinPanel: "Unpin panel",
+    updateChecking: "Checking for updates",
+    updateCurrent: "App is up to date",
+    updateInstalled: "Update {version} installed",
+    updateFailed: "Update check failed",
     usersTab: "Users",
     watchedTicketsTab: "Watched tickets"
   }

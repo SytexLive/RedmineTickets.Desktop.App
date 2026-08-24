@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 export function getReleaseType(commitMessages) {
-  let releaseType = null;
+  let releaseType = commitMessages.length > 0 ? "patch" : null;
 
   for (const message of commitMessages) {
     if (isBreakingChange(message)) {

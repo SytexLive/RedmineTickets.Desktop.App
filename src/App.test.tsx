@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 const invokeMock = vi.hoisted(() => vi.fn());
+const checkAndInstallUpdateMock = vi.hoisted(() => vi.fn());
 
 function settingsFixture() {
   return {
@@ -89,6 +90,10 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock
 }));
 
+vi.mock("./appUpdates", () => ({
+  checkAndInstallUpdate: checkAndInstallUpdateMock
+}));
+
 describe("App", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -96,6 +101,11 @@ describe("App", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
     window.localStorage.clear();
     invokeMock.mockReset();
+    checkAndInstallUpdateMock.mockReset();
+  });
+
+  beforeEach(() => {
+    checkAndInstallUpdateMock.mockResolvedValue({ status: "current" });
   });
 
   it("does not dock with default settings before saved settings are loaded", async () => {
@@ -137,6 +147,24 @@ describe("App", () => {
         dockSide: "right"
       }
     });
+  });
+
+  it("checks for updates from the header action", async () => {
+    checkAndInstallUpdateMock.mockResolvedValue({
+      status: "installed",
+      version: "0.3.8"
+    });
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Update action ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Update action ticket")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Nach Updates suchen" }));
+
+    expect(await screen.findByText("Update 0.3.8 installiert")).toBeInTheDocument();
+    expect(checkAndInstallUpdateMock).toHaveBeenCalled();
   });
 
   it("loads saved settings only once when the initial ticket refresh fails", async () => {

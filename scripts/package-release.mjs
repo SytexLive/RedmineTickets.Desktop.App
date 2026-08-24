@@ -19,8 +19,17 @@ export function getReleaseLayout({ productName, version, packageName }) {
       "nsis",
       `${productName}_${version}_x64-setup.exe`
     ),
+    setupSignatureSource: path.posix.join(
+      "src-tauri",
+      "target",
+      "release",
+      "bundle",
+      "nsis",
+      `${productName}_${version}_x64-setup.exe.sig`
+    ),
     appDestination: path.posix.join(releaseDir, appFileName),
     setupDestination: path.posix.join(releaseDir, setupFileName),
+    setupSignatureDestination: path.posix.join(releaseDir, `${setupFileName}.sig`),
     checksumDestination: path.posix.join(releaseDir, "SHA256SUMS.txt"),
   };
 }
@@ -60,6 +69,11 @@ export function packageRelease() {
       source: toNativePath(layout.setupSource),
       destination: toNativePath(layout.setupDestination),
       fileName: path.basename(layout.setupDestination),
+    },
+    {
+      source: toNativePath(layout.setupSignatureSource),
+      destination: toNativePath(layout.setupSignatureDestination),
+      fileName: path.basename(layout.setupSignatureDestination),
     },
   ];
 

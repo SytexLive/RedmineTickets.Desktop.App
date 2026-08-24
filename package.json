@@ -1,18 +1,20 @@
 {
   "name": "redmine-tickets-desktop-app",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
-    "release": "node scripts/prepare-release.mjs && tauri build --bundles nsis && node scripts/package-release.mjs",
+    "release": "node scripts/prepare-release.mjs && node scripts/signed-tauri-build.mjs && node scripts/package-release.mjs",
     "version:sync": "node scripts/sync-version.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

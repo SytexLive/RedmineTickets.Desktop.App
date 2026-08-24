@@ -11,19 +11,27 @@ type TicketListProps = {
 };
 
 export type TicketSortLabels = {
+  allCustomers: string;
+  customer: string;
+  noTicketsForCustomer: string;
   sortBy: string;
   updatedDesc: string;
   createdDesc: string;
   priorityDesc: string;
+  projectAsc: string;
   idDesc: string;
   idAsc: string;
 };
 
 const defaultSortLabels: TicketSortLabels = {
+  allCustomers: "All customers",
+  customer: "Customer",
+  noTicketsForCustomer: "No tickets for this customer",
   sortBy: "Sort by",
   updatedDesc: "Updated newest",
   createdDesc: "Created newest",
   priorityDesc: "Priority highest",
+  projectAsc: "Customer A-Z",
   idDesc: "Ticket number descending",
   idAsc: "Ticket number ascending"
 };
@@ -62,12 +70,34 @@ export function TicketList({
   onTicketContextMenu
 }: TicketListProps) {
   const [sortOption, setSortOption] = useState<TicketSortOption>("updated-desc");
+  const [projectFilter, setProjectFilter] = useState("");
   const unreadIdSet = new Set(unreadTicketIds ?? []);
-  const sortedTickets = sortTickets(tickets, sortOption);
+  const projectOptions = Array.from(
+    new Set(tickets.map((ticket) => ticket.project).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
+  const filteredTickets = projectFilter
+    ? tickets.filter((ticket) => ticket.project === projectFilter)
+    : tickets;
+  const sortedTickets = sortTickets(filteredTickets, sortOption);
 
   return (
     <section className="ticket-list-panel" aria-label="Redmine tickets">
       <div className="ticket-list-toolbar">
+        <label>
+          <span>{sortLabels.customer}</span>
+          <select
+            aria-label={sortLabels.customer}
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value="">{sortLabels.allCustomers}</option>
+            {projectOptions.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           <span>{sortLabels.sortBy}</span>
           <select
@@ -78,12 +108,16 @@ export function TicketList({
             <option value="updated-desc">{sortLabels.updatedDesc}</option>
             <option value="created-desc">{sortLabels.createdDesc}</option>
             <option value="priority-desc">{sortLabels.priorityDesc}</option>
+            <option value="project-asc">{sortLabels.projectAsc}</option>
             <option value="id-desc">{sortLabels.idDesc}</option>
             <option value="id-asc">{sortLabels.idAsc}</option>
           </select>
         </label>
       </div>
       <div className="ticket-list">
+        {sortedTickets.length === 0 ? (
+          <div className="ticket-list-empty">{sortLabels.noTicketsForCustomer}</div>
+        ) : null}
         {sortedTickets.map((ticket) => {
           const isUnread = unreadIdSet.has(ticket.id);
 

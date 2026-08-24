@@ -1059,10 +1059,14 @@ export function App() {
               onOpenTicket={handleOpenTicket}
               onTicketContextMenu={handleOpenTicketContextMenu}
               sortLabels={{
+                allCustomers: t("allCustomers"),
+                customer: t("customer"),
+                noTicketsForCustomer: t("noTicketsForCustomer"),
                 sortBy: t("sortBy"),
                 updatedDesc: t("sortUpdatedDesc"),
                 createdDesc: t("sortCreatedDesc"),
                 priorityDesc: t("sortPriorityDesc"),
+                projectAsc: t("sortProjectAsc"),
                 idDesc: t("sortIdDesc"),
                 idAsc: t("sortIdAsc")
               }}

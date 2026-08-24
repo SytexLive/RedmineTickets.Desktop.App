@@ -44,6 +44,18 @@ describe("sortTickets", () => {
     ]);
   });
 
+  it("sorts tickets by customer project name", () => {
+    const tickets = [
+      ticket({ id: 1, project: "Zeta" }),
+      ticket({ id: 2, project: "alpha" }),
+      ticket({ id: 3, project: "Beta" })
+    ];
+
+    expect(sortTickets(tickets, "project-asc").map((sortedTicket) => sortedTicket.id)).toEqual([
+      2, 3, 1
+    ]);
+  });
+
   it("keeps the original ticket array unchanged", () => {
     const tickets = [
       ticket({ id: 1, updatedAt: "2026-08-09T08:00:00Z" }),

@@ -7,11 +7,13 @@ export type TranslationKey =
   | "assignedToId"
   | "autostart"
   | "cancel"
+  | "allCustomers"
   | "closeCommentDialog"
   | "closeCreateTicketDialog"
   | "collapsePanel"
   | "comment"
   | "createTicket"
+  | "customer"
   | "chooseOption"
   | "description"
   | "descriptionAttachmentHint"
@@ -31,6 +33,7 @@ export type TranslationKey =
   | "monitor"
   | "noOpenUsers"
   | "noOpenTickets"
+  | "noTicketsForCustomer"
   | "noAssignment"
   | "noStatusesLoaded"
   | "noUsersLoaded"
@@ -59,6 +62,7 @@ export type TranslationKey =
   | "sortIdAsc"
   | "sortIdDesc"
   | "sortPriorityDesc"
+  | "sortProjectAsc"
   | "sortUpdatedDesc"
   | "status"
   | "statusId"
@@ -90,11 +94,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     assignedToId: "Zuweisung-ID",
     autostart: "Mit Windows starten",
     cancel: "Abbrechen",
+    allCustomers: "Alle Kunden",
     closeCommentDialog: "Kommentardialog schlie\u00dfen",
     closeCreateTicketDialog: "Ticketdialog schlie\u00dfen",
     collapsePanel: "Panel einklappen",
     comment: "Kommentar",
     createTicket: "Ticket erstellen",
+    customer: "Kunde",
     chooseOption: "Bitte wählen",
     description: "Beschreibung",
     descriptionAttachmentHint: "Bilder hier hineinziehen oder einfügen",
@@ -114,6 +120,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     monitor: "Monitor",
     noOpenUsers: "Keine offenen Tickets f\u00fcr Benutzer",
     noOpenTickets: "Keine offenen Tickets",
+    noTicketsForCustomer: "Keine Tickets f\u00fcr diesen Kunden",
     noAssignment: "Nicht ändern",
     noStatusesLoaded: "Keine Status geladen",
     noUsersLoaded: "Keine Benutzer geladen",
@@ -142,6 +149,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sortIdAsc: "Ticketnummer aufsteigend",
     sortIdDesc: "Ticketnummer absteigend",
     sortPriorityDesc: "Priorit\u00e4t: h\u00f6chste zuerst",
+    sortProjectAsc: "Kunde A-Z",
     sortUpdatedDesc: "\u00c4nderungsdatum: neueste zuerst",
     status: "Status",
     statusId: "Status-ID",
@@ -172,11 +180,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     assignedToId: "Assignee ID",
     autostart: "Start with Windows",
     cancel: "Cancel",
+    allCustomers: "All customers",
     closeCommentDialog: "Close comment dialog",
     closeCreateTicketDialog: "Close ticket dialog",
     collapsePanel: "Collapse panel",
     comment: "Comment",
     createTicket: "Create ticket",
+    customer: "Customer",
     chooseOption: "Choose",
     description: "Description",
     descriptionAttachmentHint: "Drop or paste images here",
@@ -196,6 +206,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     monitor: "Monitor",
     noOpenUsers: "No open tickets for users",
     noOpenTickets: "No open tickets",
+    noTicketsForCustomer: "No tickets for this customer",
     noAssignment: "Do not change",
     noStatusesLoaded: "No statuses loaded",
     noUsersLoaded: "No users loaded",
@@ -224,6 +235,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     sortIdAsc: "Ticket number ascending",
     sortIdDesc: "Ticket number descending",
     sortPriorityDesc: "Priority highest",
+    sortProjectAsc: "Customer A-Z",
     sortUpdatedDesc: "Updated newest",
     status: "Status",
     statusId: "Status ID",

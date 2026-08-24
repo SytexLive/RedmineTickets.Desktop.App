@@ -198,6 +198,98 @@ describe("TicketList", () => {
     ]);
   });
 
+  it("filters tickets by customer project", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 15,
+            subject: "Alpha ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Alpha GmbH",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/15"
+          },
+          {
+            id: 16,
+            subject: "Beta ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Beta AG",
+            projectId: 18,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/16"
+          }
+        ]}
+        sortLabels={{
+          allCustomers: "Alle Kunden",
+          customer: "Kunde",
+          noTicketsForCustomer: "Keine Tickets fuer diesen Kunden",
+          sortBy: "Sortieren",
+          updatedDesc: "Aktualisiert",
+          createdDesc: "Erstellt",
+          priorityDesc: "Prioritaet",
+          projectAsc: "Kunde A-Z",
+          idDesc: "Ticketnummer absteigend",
+          idAsc: "Ticketnummer aufsteigend"
+        }}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Kunde"), {
+      target: { value: "Beta AG" }
+    });
+
+    expect(screen.queryByText("Alpha ticket")).toBeNull();
+    expect(screen.getByText("Beta ticket")).toBeTruthy();
+  });
+
+  it("sorts tickets by customer project when selected", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 17,
+            subject: "Zeta ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Zeta GmbH",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/17"
+          },
+          {
+            id: 18,
+            subject: "Alpha ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Alpha GmbH",
+            projectId: 18,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/18"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Sort by"), {
+      target: { value: "project-asc" }
+    });
+
+    expect(screen.getAllByRole("button").map((row) => row.textContent)).toEqual([
+      "#18Alpha GmbHNormalAlpha ticketBugNew",
+      "#17Zeta GmbHNormalZeta ticketBugNew"
+    ]);
+  });
+
   it("keeps ticket rows from shrinking when the list overflows", () => {
     render(
       <TicketList

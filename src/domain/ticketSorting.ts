@@ -4,6 +4,7 @@ export type TicketSortOption =
   | "updated-desc"
   | "created-desc"
   | "priority-desc"
+  | "project-asc"
   | "id-desc"
   | "id-asc";
 
@@ -36,6 +37,12 @@ function compareByIdDesc(left: Ticket, right: Ticket): number {
   return right.id - left.id;
 }
 
+function compareByProjectAsc(left: Ticket, right: Ticket): number {
+  return left.project.localeCompare(right.project, undefined, {
+    sensitivity: "base"
+  });
+}
+
 export function sortTickets(tickets: Ticket[], sortOption: TicketSortOption): Ticket[] {
   return [...tickets].sort((left, right) => {
     if (sortOption === "updated-desc") {
@@ -48,6 +55,10 @@ export function sortTickets(tickets: Ticket[], sortOption: TicketSortOption): Ti
 
     if (sortOption === "priority-desc") {
       return priorityValue(right.priority) - priorityValue(left.priority) || compareByIdDesc(left, right);
+    }
+
+    if (sortOption === "project-asc") {
+      return compareByProjectAsc(left, right) || compareByIdDesc(left, right);
     }
 
     if (sortOption === "id-asc") {

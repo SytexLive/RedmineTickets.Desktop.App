@@ -17,6 +17,10 @@ download-and-replace flow for updates.
 - `src-tauri/src/lib.rs` registers `tauri-plugin-updater` and
   `tauri-plugin-process`.
 - `src-tauri/tauri.conf.json` enables `bundle.createUpdaterArtifacts`.
+- `src-tauri/capabilities/default.json` grants the frontend access to
+  `updater:default` and `process:allow-restart`. Without these ACL permissions,
+  the JavaScript updater fails with errors such as
+  `Command plugin:updater|check not allowed by ACL`.
 - The updater endpoint is GitHub Releases:
   `https://github.com/SytexLive/RedmineTickets.Desktop.App/releases/latest/download/latest.json`.
 - `windows.installMode` is `passive` so users see installer progress without

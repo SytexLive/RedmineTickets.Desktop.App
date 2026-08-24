@@ -78,6 +78,7 @@ type TicketContextSubmenu = "assignee" | "status";
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
 const CONTEXT_MENU_MARGIN = 12;
 const CONTEXT_MENU_WIDTH = 240;
+const UPDATE_SUCCESS_VISIBLE_MS = 4000;
 const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
 
 function selectedOptionId(value: string) {
@@ -229,6 +230,7 @@ export function App() {
   const newTicketProjectFieldRef = useRef<HTMLLabelElement | null>(null);
   const newTicketDescriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const collapseTimerRef = useRef<number | null>(null);
+  const updateStatusTimerRef = useRef<number | null>(null);
   const ticketStateRef = useRef<TicketNotificationState>({
     knownTicketIds: [],
     unreadTicketIds: []
@@ -326,7 +328,24 @@ export function App() {
     );
   }, [refreshTickets]);
 
+  const clearUpdateStatusTimer = useCallback(() => {
+    if (updateStatusTimerRef.current !== null) {
+      window.clearTimeout(updateStatusTimerRef.current);
+      updateStatusTimerRef.current = null;
+    }
+  }, []);
+
+  const showTemporaryUpdateStatus = useCallback((status: "current" | "installed") => {
+    clearUpdateStatusTimer();
+    setUpdateStatus(status);
+    updateStatusTimerRef.current = window.setTimeout(() => {
+      setUpdateStatus("idle");
+      updateStatusTimerRef.current = null;
+    }, UPDATE_SUCCESS_VISIBLE_MS);
+  }, [clearUpdateStatusTimer]);
+
   const handleCheckForUpdates = useCallback(async (options: { silent?: boolean } = {}) => {
+    clearUpdateStatusTimer();
     if (!options.silent) {
       setUpdateStatus("checking");
     }
@@ -335,12 +354,12 @@ export function App() {
       const result = await checkAndInstallUpdate();
       if (result.status === "installed") {
         setInstalledUpdateVersion(result.version);
-        setUpdateStatus("installed");
+        showTemporaryUpdateStatus("installed");
         return;
       }
 
       if (!options.silent) {
-        setUpdateStatus("current");
+        showTemporaryUpdateStatus("current");
       }
     } catch (err) {
       if (!options.silent) {
@@ -348,7 +367,7 @@ export function App() {
         setError(err instanceof Error ? err.message : String(err));
       }
     }
-  }, []);
+  }, [clearUpdateStatusTimer, showTemporaryUpdateStatus]);
 
   const refreshIssueStatuses = useCallback(async (nextSettings: RedmineSettings) => {
     try {
@@ -518,8 +537,9 @@ export function App() {
       if (collapseTimerRef.current !== null) {
         window.clearTimeout(collapseTimerRef.current);
       }
+      clearUpdateStatusTimer();
     };
-  }, []);
+  }, [clearUpdateStatusTimer]);
 
   async function handleSave(nextSettings: RedmineSettings) {
     setSaving(true);

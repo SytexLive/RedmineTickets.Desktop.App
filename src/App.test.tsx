@@ -167,6 +167,30 @@ describe("App", () => {
     expect(checkAndInstallUpdateMock).toHaveBeenCalled();
   });
 
+  it("hides the current update status after a short delay", async () => {
+    checkAndInstallUpdateMock.mockResolvedValue({ status: "current" });
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Current update ticket")]]
+    });
+
+    render(<App />);
+
+    await screen.findByText("Current update ticket");
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Nach Updates suchen" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("App ist aktuell")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+
+    expect(screen.queryByText("App ist aktuell")).toBeNull();
+  });
+
   it("loads saved settings only once when the initial ticket refresh fails", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {

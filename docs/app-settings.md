@@ -26,3 +26,15 @@ The app root in `src/App.tsx` exposes the value as `--accent-color`. CSS derives
 related focus and soft colors from that variable with `color-mix()`, so new
 accent-aware UI should use the existing CSS variables instead of hard-coded blue
 values.
+
+## Autostart
+
+Autostart writes the current executable path to
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run` via
+`src-tauri/src/autostart.rs`. It must be enabled from an installed/release app,
+not from `npm run tauri dev`.
+
+The dev executable under `src-tauri/target/debug` loads the frontend from the
+local Vite server. If that debug executable is launched by Windows after a
+restart, the webview shows a refused `localhost` connection because Vite is not
+running. Keep the backend guard that rejects `target/debug` autostart paths.

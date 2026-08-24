@@ -36,8 +36,20 @@ fn registry_status_is_success(enabled: bool, status_success: bool) -> bool {
     status_success || !enabled
 }
 
+fn is_debug_build_executable(exe_path: &Path) -> bool {
+    exe_path
+        .to_string_lossy()
+        .replace('/', r"\")
+        .to_ascii_lowercase()
+        .contains(r"\target\debug\")
+}
+
 #[cfg(target_os = "windows")]
 pub fn set_enabled(enabled: bool, exe_path: &Path) -> Result<(), String> {
+    if enabled && is_debug_build_executable(exe_path) {
+        return Err("Autostart must be enabled from the installed app".to_string());
+    }
+
     let status = Command::new("reg")
         .args(registry_command_args(enabled, exe_path))
         .status()
@@ -101,5 +113,15 @@ mod tests {
     #[test]
     fn treats_missing_registry_entry_as_success_when_disabling_autostart() {
         assert_eq!(registry_status_is_success(false, false), true);
+    }
+
+    #[test]
+    fn detects_debug_build_executables() {
+        assert!(is_debug_build_executable(Path::new(
+            r"C:\Users\Dominik\Documents\Projekte\RedmineTickets.Desktop.App\src-tauri\target\debug\redmine-tickets-desktop-app.exe"
+        )));
+        assert!(!is_debug_build_executable(Path::new(
+            r"C:\Program Files\Redmine Tickets\Redmine Tickets.exe"
+        )));
     }
 }

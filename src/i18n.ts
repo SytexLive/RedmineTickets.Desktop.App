@@ -291,6 +291,8 @@ const backendErrorTranslations: Partial<Record<Language, Record<string, string>>
     "Could not size panel": "Panel-Gro\u00dfe konnte nicht gesetzt werden",
     "Could not update Windows autostart":
       "Windows-Autostart konnte nicht aktualisiert werden",
+    "Autostart must be enabled from the installed app":
+      "Autostart muss aus der installierten App aktiviert werden",
     "Invalid accent color": "Ung\u00fcltige Akzentfarbe",
     "Invalid Redmine URL": "Ung\u00fcltige Redmine URL",
     "Invalid ticket notification sound": "Ung\u00fcltiger Ticketton",

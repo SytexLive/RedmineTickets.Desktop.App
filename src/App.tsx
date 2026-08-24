@@ -42,7 +42,11 @@ import {
   RefreshIcon,
   SettingsIcon
 } from "./components/icons";
-import { buildTicketUrl, buildUserOpenTicketsUrl } from "./domain/ticket";
+import {
+  buildTicketUrl,
+  buildUnassignedOpenTicketsUrl,
+  buildUserOpenTicketsUrl
+} from "./domain/ticket";
 import type { Ticket } from "./domain/ticket";
 import { applyTicketRefresh, markTicketRead } from "./domain/ticketNotifications";
 import { summarizeOpenTicketsByAssignee } from "./domain/ticketUsers";
@@ -590,14 +594,17 @@ export function App() {
     }
   }
 
-  async function handleOpenAssigneeTickets(assigneeId: number) {
+  async function handleOpenAssigneeTickets(assigneeId?: number) {
     if (!settings) {
       setViewState("settings");
       return;
     }
 
     try {
-      await openTicketUrl(buildUserOpenTicketsUrl(settings.baseUrl, assigneeId));
+      const ticketListUrl = assigneeId
+        ? buildUserOpenTicketsUrl(settings.baseUrl, assigneeId)
+        : buildUnassignedOpenTicketsUrl(settings.baseUrl);
+      await openTicketUrl(ticketListUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -987,20 +994,16 @@ export function App() {
 
                   return (
                     <li className="user-ticket-summary-row" key={`${user.assigneeId ?? "none"}-${user.assignee}`}>
-                      {assigneeId ? (
-                        <button
-                          aria-label={`${user.assignee} ${user.openTicketCount} offene Tickets`}
-                          title={`${user.assignee} ${user.openTicketCount} offene Tickets`}
-                          type="button"
-                          onClick={() => {
-                            void handleOpenAssigneeTickets(assigneeId);
-                          }}
-                        >
-                          {rowContent}
-                        </button>
-                      ) : (
-                        rowContent
-                      )}
+                      <button
+                        aria-label={`${user.assignee} ${user.openTicketCount} offene Tickets`}
+                        title={`${user.assignee} ${user.openTicketCount} offene Tickets`}
+                        type="button"
+                        onClick={() => {
+                          void handleOpenAssigneeTickets(assigneeId);
+                        }}
+                      >
+                        {rowContent}
+                      </button>
                     </li>
                   );
                 })}

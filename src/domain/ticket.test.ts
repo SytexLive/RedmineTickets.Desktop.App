@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildTicketUrl, buildUserOpenTicketsUrl } from "./ticket";
+import {
+  buildTicketUrl,
+  buildUnassignedOpenTicketsUrl,
+  buildUserOpenTicketsUrl
+} from "./ticket";
 
 describe("buildTicketUrl", () => {
   it("builds a Redmine issue URL without duplicate slashes", () => {
@@ -31,6 +35,14 @@ describe("buildUserOpenTicketsUrl", () => {
   it("rejects non-positive user IDs", () => {
     expect(() => buildUserOpenTicketsUrl("https://redmine.example.com", 0)).toThrow(
       "User ID must be positive"
+    );
+  });
+});
+
+describe("buildUnassignedOpenTicketsUrl", () => {
+  it("builds a Redmine issue list filtered to open unassigned tickets", () => {
+    expect(buildUnassignedOpenTicketsUrl("https://redmine.example.com/")).toBe(
+      "https://redmine.example.com/issues?set_filter=1&f%5B%5D=status_id&op%5Bstatus_id%5D=o&f%5B%5D=assigned_to_id&op%5Bassigned_to_id%5D=%21*"
     );
   });
 });

@@ -746,6 +746,45 @@ describe("App", () => {
     });
   });
 
+  it("opens the Redmine open-ticket list for clicked unassigned summary rows", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_open_tickets") {
+        return Promise.resolve([
+          { ...ticketFixture(1, "Unassigned ticket"), assignee: undefined, assigneeId: undefined }
+        ]);
+      }
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    await screen.findByText("Assigned ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Benutzer" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Nicht zugewiesen 1 offene Tickets" })
+    );
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+        url: "https://redmine.example.com/issues?set_filter=1&f%5B%5D=status_id&op%5Bstatus_id%5D=o&f%5B%5D=assigned_to_id&op%5Bassigned_to_id%5D=%21*"
+      });
+    });
+  });
+
   it("keeps settings open when a ticket refresh completes", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") return Promise.resolve();

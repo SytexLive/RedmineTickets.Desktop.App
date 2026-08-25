@@ -449,6 +449,50 @@ textarea {
   font-size: 13px;
 }
 
+.comment-dialog-checkbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border: 1px solid #dbe1ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4d5868;
+  padding: 9px 10px;
+}
+
+.comment-dialog-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--accent-color);
+}
+
+.comment-dialog-checkbox:has(input:checked) {
+  border-color: var(--accent-color);
+  background: var(--accent-color-soft);
+}
+
+.comment-dialog-checkbox:has(input:disabled) {
+  opacity: 0.62;
+}
+
+.comment-dialog-checkbox span {
+  display: grid;
+  gap: 2px;
+}
+
+.comment-dialog-checkbox strong {
+  color: #1b1f24;
+  font-size: 13px;
+}
+
+.comment-dialog-checkbox small {
+  color: #697282;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .comment-dialog-field select {
   width: 100%;
   height: 36px;

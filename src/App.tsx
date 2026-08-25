@@ -213,6 +213,7 @@ export function App() {
     useState<TicketContextSubmenu | null>(null);
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
+  const [commentPrivateNotes, setCommentPrivateNotes] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [selectedCommentStatusId, setSelectedCommentStatusId] = useState("");
   const [showCreateTicketDialog, setShowCreateTicketDialog] = useState(false);
@@ -642,7 +643,7 @@ export function App() {
 
     try {
       if (comment.trim().length > 0) {
-        await addTicketComment(settings, commentTicket.id, comment);
+        await addTicketComment(settings, commentTicket.id, comment, commentPrivateNotes);
       }
       if (selectedAssigneeId) {
         await assignTicket(settings, commentTicket.id, Number(selectedAssigneeId));
@@ -651,6 +652,7 @@ export function App() {
         await updateTicketStatus(settings, commentTicket.id, Number(selectedCommentStatusId));
       }
       setComment("");
+      setCommentPrivateNotes(false);
       setSelectedAssigneeId("");
       setSelectedCommentStatusId("");
       setCommentTicket(null);
@@ -727,6 +729,7 @@ export function App() {
   function handleOpenCommentDialog(ticket: Ticket) {
     setCommentTicket(ticket);
     setComment("");
+    setCommentPrivateNotes(false);
     setSelectedAssigneeId("");
     setSelectedCommentStatusId("");
     setAssignableUsers([]);
@@ -1305,6 +1308,18 @@ export function App() {
                 placeholder={t("comment")}
                 value={comment}
               />
+              <label className="comment-dialog-checkbox">
+                <input
+                  checked={commentPrivateNotes}
+                  disabled={comment.trim().length === 0}
+                  onChange={(event) => setCommentPrivateNotes(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  <strong>{t("internalComment")}</strong>
+                  <small>{t("internalCommentHint")}</small>
+                </span>
+              </label>
               <label className="comment-dialog-field">
                 <span>{t("assignTo")}</span>
                 <select

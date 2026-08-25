@@ -328,6 +328,7 @@ describe("App", () => {
     fireEvent.change(screen.getByPlaceholderText("Kommentar"), {
       target: { value: "Bitte übernehmen." }
     });
+    fireEvent.click(screen.getByLabelText(/Interner Kommentar/));
     fireEvent.change(screen.getByLabelText("Zuweisen an"), {
       target: { value: "7" }
     });
@@ -352,7 +353,8 @@ describe("App", () => {
       expect(invokeMock).toHaveBeenCalledWith("add_ticket_comment", {
         settings: expectedSettings,
         ticketId: 42,
-        comment: "Bitte übernehmen."
+        comment: "Bitte übernehmen.",
+        privateNotes: true
       });
       expect(invokeMock).toHaveBeenCalledWith("assign_ticket", {
         settings: expectedSettings,

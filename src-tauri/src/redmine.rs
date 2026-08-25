@@ -158,6 +158,8 @@ struct AssigneeUpdateIssue {
 #[derive(Debug, Serialize)]
 struct CommentUpdateIssue {
     notes: String,
+    #[serde(skip_serializing_if = "is_false")]
+    private_notes: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -197,6 +199,10 @@ struct UploadedFile {
 #[derive(Debug, Serialize)]
 struct UpdateIssueBody<T> {
     issue: T,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }
 
 pub fn normalize_issue(base_url: &str, issue: RedmineIssue) -> Ticket {
@@ -645,6 +651,7 @@ pub async fn add_ticket_comment(
     settings: RedmineSettings,
     ticket_id: u64,
     comment: String,
+    private_notes: bool,
 ) -> Result<(), String> {
     settings.validate()?;
     validate_comment(&comment)?;
@@ -655,6 +662,7 @@ pub async fn add_ticket_comment(
         .json(&UpdateIssueBody {
             issue: CommentUpdateIssue {
                 notes: comment.trim().to_string(),
+                private_notes,
             },
         })
         .send()
@@ -789,6 +797,45 @@ mod tests {
         assert_eq!(
             validate_comment("   ").unwrap_err(),
             "Comment must not be empty"
+        );
+    }
+
+    #[test]
+    fn serializes_private_ticket_comment_update() {
+        let body = UpdateIssueBody {
+            issue: CommentUpdateIssue {
+                notes: "Internal note".to_string(),
+                private_notes: true,
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_value(body).unwrap(),
+            serde_json::json!({
+                "issue": {
+                    "notes": "Internal note",
+                    "private_notes": true
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn omits_public_ticket_comment_private_flag() {
+        let body = UpdateIssueBody {
+            issue: CommentUpdateIssue {
+                notes: "Public note".to_string(),
+                private_notes: false,
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_value(body).unwrap(),
+            serde_json::json!({
+                "issue": {
+                    "notes": "Public note"
+                }
+            })
         );
     }
 

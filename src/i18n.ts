@@ -29,6 +29,8 @@ export type TranslationKey =
   | "expandPanel"
   | "createdTicketsTab"
   | "checkForUpdates"
+  | "internalComment"
+  | "internalCommentHint"
   | "language"
   | "loading"
   | "myOpenTicketsTab"
@@ -118,6 +120,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     expandPanel: "Panel ausklappen",
     createdTicketsTab: "Erstellte Tickets",
     checkForUpdates: "Nach Updates suchen",
+    internalComment: "Interner Kommentar",
+    internalCommentHint: "Nur Benutzer mit Redmine-Berechtigung für private Notizen sehen diesen Kommentar.",
     language: "Sprache",
     loading: "L\u00e4dt",
     myOpenTicketsTab: "Meine offenen Tickets",
@@ -206,6 +210,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     expandPanel: "Expand panel",
     createdTicketsTab: "Created tickets",
     checkForUpdates: "Check for updates",
+    internalComment: "Internal comment",
+    internalCommentHint: "Only users with Redmine permission for private notes can see this comment.",
     language: "Language",
     loading: "Loading",
     myOpenTicketsTab: "My open tickets",

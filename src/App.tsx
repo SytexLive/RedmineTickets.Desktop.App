@@ -81,6 +81,14 @@ const CONTEXT_MENU_MARGIN = 12;
 const CONTEXT_MENU_WIDTH = 240;
 const UPDATE_SUCCESS_VISIBLE_MS = 4000;
 const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
+const RELEASE_NOTE_KEYS = [
+  "releaseNoteSearchFilter",
+  "releaseNoteCompactCards",
+  "releaseNoteTabCounts",
+  "releaseNoteAttachments",
+  "releaseNoteCommentSaving",
+  "releaseNoteWatcherFix"
+] as const;
 
 function selectedOptionId(value: string) {
   return Number(value);
@@ -214,8 +222,10 @@ export function App() {
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
   const [commentPrivateNotes, setCommentPrivateNotes] = useState(false);
+  const [savingComment, setSavingComment] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [selectedCommentStatusId, setSelectedCommentStatusId] = useState("");
+  const [showVersionInfo, setShowVersionInfo] = useState(false);
   const [showCreateTicketDialog, setShowCreateTicketDialog] = useState(false);
   const [newTicketSubject, setNewTicketSubject] = useState("");
   const [newTicketProjectId, setNewTicketProjectId] = useState("");
@@ -274,8 +284,9 @@ export function App() {
     }
     try {
       const loadedTickets = await fetchTicketsForTab(nextSettings, ticketTab);
+      const nextTickets = Array.isArray(loadedTickets) ? loadedTickets : [];
       const nextCacheEntry = {
-        tickets: loadedTickets,
+        tickets: nextTickets,
         loadedAt: Date.now()
       };
       ticketTabCacheRef.current = {
@@ -284,12 +295,13 @@ export function App() {
       };
       setTicketTabCache(ticketTabCacheRef.current);
       if (activeTicketTabRef.current === ticketTab) {
-        setTickets(loadedTickets);
+        setTickets(nextTickets);
+        setError(null);
       }
       if (ticketTab === "my-open") {
         const result = applyTicketRefresh(
           ticketStateRef.current,
-          loadedTickets.map((ticket) => ticket.id),
+          nextTickets.map((ticket) => ticket.id),
           hasInitializedTicketBaselineRef.current
         );
         ticketStateRef.current = result.state;
@@ -304,7 +316,6 @@ export function App() {
           });
         }
       }
-      setError(null);
       if (viewStateRef.current !== "settings") {
         setViewState("tickets");
       }
@@ -321,12 +332,18 @@ export function App() {
   }, [activeTicketTab, setTicketTabLoadingState]);
 
   const refreshTicketTabsInBackground = useCallback(async (
-    nextSettings: RedmineSettings
+    nextSettings: RedmineSettings,
+    tabs: TicketTab[] = TICKET_TABS,
+    options: { showLoading?: boolean; skipCached?: boolean } = {}
   ) => {
     await Promise.all(
-      TICKET_TABS.map((ticketTab) =>
-        refreshTickets(nextSettings, ticketTab, { showLoading: false })
-      )
+      tabs
+        .filter((ticketTab) =>
+          options.skipCached ? !hasCachedTickets(ticketTabCacheRef.current[ticketTab]) : true
+        )
+        .map((ticketTab) =>
+          refreshTickets(nextSettings, ticketTab, { showLoading: options.showLoading ?? false })
+        )
     );
   }, [refreshTickets]);
 
@@ -455,7 +472,12 @@ export function App() {
         void dockWindow(loadedSettings);
         void refreshIssueStatuses(loadedSettings);
         void refreshTicketCreateOptions(loadedSettings);
-        void refreshTickets(loadedSettings, "my-open");
+        void refreshTickets(loadedSettings, "my-open").then(() =>
+          refreshTicketTabsInBackground(loadedSettings, ["watched", "created", "users"], {
+            showLoading: true,
+            skipCached: true
+          })
+        );
       })
       .catch((err) => {
         if (cancelled) {
@@ -579,6 +601,16 @@ export function App() {
     void saveTicketState(nextTicketState).catch(() => undefined);
   }
 
+  function markAllTicketsAsRead() {
+    const nextTicketState = {
+      ...ticketStateRef.current,
+      unreadTicketIds: []
+    };
+    ticketStateRef.current = nextTicketState;
+    setTicketState(nextTicketState);
+    void saveTicketState(nextTicketState).catch(() => undefined);
+  }
+
   async function handleOpenTicket(ticket: Ticket) {
     markTicketAsRead(ticket.id);
     try {
@@ -637,10 +669,11 @@ export function App() {
   }
 
   async function handleSubmitComment() {
-    if (!settings || !commentTicket) {
+    if (!settings || !commentTicket || savingComment) {
       return;
     }
 
+    setSavingComment(true);
     try {
       if (comment.trim().length > 0) {
         await addTicketComment(settings, commentTicket.id, comment, commentPrivateNotes);
@@ -659,6 +692,8 @@ export function App() {
       await refreshTickets(settings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingComment(false);
     }
   }
 
@@ -779,6 +814,12 @@ export function App() {
       ...currentAttachments,
       ...attachments
     ]);
+  }
+
+  function handleRemoveNewTicketAttachment(attachmentIndex: number) {
+    setNewTicketAttachments((currentAttachments) =>
+      currentAttachments.filter((_, index) => index !== attachmentIndex)
+    );
   }
 
   function formatNewTicketDescription(prefix: string, suffix = prefix) {
@@ -926,6 +967,12 @@ export function App() {
       : projects.filter((project) =>
           project.name.toLowerCase().includes(normalizedProjectFilter)
         );
+  const ticketTabCounts = {
+    "my-open": ticketTabCache["my-open"].tickets.length,
+    watched: ticketTabCache.watched.tickets.length,
+    created: ticketTabCache.created.tickets.length,
+    users: ticketTabCache.users.tickets.length
+  } satisfies Record<TicketTab, number>;
 
   return (
     <main
@@ -947,7 +994,18 @@ export function App() {
             <div className="panel-header-top">
               <div className="panel-title-block">
                 <h1>{t("title")}</h1>
-                <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
+                <div className="panel-title-meta">
+                  <p>{showingSettings ? t("settings") : `${tickets.length} ${t("openCount")}`}</p>
+                  <button
+                    aria-label={t("versionInfo").replace("{version}", __APP_VERSION__)}
+                    className="app-version-button"
+                    title={t("versionInfo").replace("{version}", __APP_VERSION__)}
+                    type="button"
+                    onClick={() => setShowVersionInfo(true)}
+                  >
+                    v{__APP_VERSION__}
+                  </button>
+                </div>
               </div>
               <div className="header-actions">
                 <button
@@ -1030,6 +1088,30 @@ export function App() {
 
           {visibleError ? <div className="error-banner">{visibleError}</div> : null}
 
+          {showVersionInfo ? (
+            <div
+              className="version-info-dialog"
+              role="dialog"
+              aria-label={t("versionInfo").replace("{version}", __APP_VERSION__)}
+            >
+              <div className="comment-dialog-header">
+                <strong>{t("whatsNewTitle").replace("{version}", __APP_VERSION__)}</strong>
+                <button
+                  aria-label={t("closeVersionInfo")}
+                  type="button"
+                  onClick={() => setShowVersionInfo(false)}
+                >
+                  x
+                </button>
+              </div>
+              <ul>
+                {RELEASE_NOTE_KEYS.map((releaseNoteKey) => (
+                  <li key={releaseNoteKey}>{t(releaseNoteKey)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {viewState === "loading" ? (
             <div className="status-panel">{t("loading")}</div>
           ) : null}
@@ -1068,15 +1150,25 @@ export function App() {
               sortLabels={{
                 allCustomers: t("allCustomers"),
                 customer: t("customer"),
+                createdPrefix: t("createdPrefix"),
+                daysAgo: t("daysAgo"),
+                hoursAgo: t("hoursAgo"),
+                justNow: t("justNow"),
+                markAllRead: t("markAllRead"),
+                minutesAgo: t("minutesAgo"),
                 noTicketsForCustomer: t("noTicketsForCustomer"),
+                onlyNew: t("onlyNewTickets"),
+                search: t("searchTickets"),
                 sortBy: t("sortBy"),
                 updatedDesc: t("sortUpdatedDesc"),
+                updatedPrefix: t("updatedPrefix"),
                 createdDesc: t("sortCreatedDesc"),
                 priorityDesc: t("sortPriorityDesc"),
                 projectAsc: t("sortProjectAsc"),
                 idDesc: t("sortIdDesc"),
                 idAsc: t("sortIdAsc")
               }}
+              onMarkAllRead={markAllTicketsAsRead}
               tickets={tickets}
               unreadTicketIds={ticketState.unreadTicketIds}
             />
@@ -1140,20 +1232,40 @@ export function App() {
                   shortLabel: t("usersTab"),
                   icon: "users"
                 }
-              ].map((tab) => (
-                <button
-                  aria-label={tab.label}
-                  aria-pressed={activeTicketTab === tab.id}
-                  className={activeTicketTab === tab.id ? "is-active" : undefined}
-                  key={tab.id}
-                  title={tab.label}
-                  type="button"
-                  onClick={() => handleSelectTicketTab(tab.id)}
-                >
-                  <span aria-hidden="true" className={`bottom-ticket-tab-icon icon-${tab.icon}`} />
-                  <span>{tab.shortLabel}</span>
-                </button>
-              ))}
+              ].map((tab) => {
+                const tabCount = ticketTabCounts[tab.id];
+                const tabLoaded = hasCachedTickets(ticketTabCache[tab.id]);
+                const tabLoading = ticketTabLoading[tab.id] && !tabLoaded;
+                const tabLabel = tabLoading
+                  ? `${tab.label}, ${t("loading")}`
+                  : `${tab.label}, ${tabCount} ${t("openCount")}`;
+
+                return (
+                  <button
+                    aria-label={tab.label}
+                    aria-pressed={activeTicketTab === tab.id}
+                    className={activeTicketTab === tab.id ? "is-active" : undefined}
+                    key={tab.id}
+                    title={tabLabel}
+                    type="button"
+                    onClick={() => handleSelectTicketTab(tab.id)}
+                  >
+                    <span aria-hidden="true" className={`bottom-ticket-tab-icon icon-${tab.icon}`} />
+                    <span>{tab.shortLabel}</span>
+                    {tabLoading ? (
+                      <span
+                        aria-label={t("loading")}
+                        className="bottom-ticket-tab-count bottom-ticket-tab-spinner"
+                        role="status"
+                      />
+                    ) : (
+                      <strong aria-hidden="true" className="bottom-ticket-tab-count">
+                        {tabCount}
+                      </strong>
+                    )}
+                  </button>
+                );
+              })}
             </nav>
           ) : null}
 
@@ -1286,6 +1398,7 @@ export function App() {
                 <strong>#{commentTicket.id}</strong>
                 <button
                   aria-label={t("closeCommentDialog")}
+                  disabled={savingComment}
                   type="button"
                   onClick={() => setCommentTicket(null)}
                 >
@@ -1356,6 +1469,7 @@ export function App() {
               <button
                 className="primary-action"
                 disabled={
+                  savingComment ||
                   comment.trim().length === 0 &&
                   !selectedAssigneeId &&
                   !selectedCommentStatusId
@@ -1365,7 +1479,7 @@ export function App() {
                   void handleSubmitComment();
                 }}
               >
-                {t("saveChanges")}
+                {savingComment ? t("saving") : t("saveChanges")}
               </button>
             </div>
           ) : null}
@@ -1562,7 +1676,14 @@ export function App() {
                   <ul>
                     {newTicketAttachments.map((attachment, index) => (
                       <li key={`${attachment.filename}-${index}`}>
-                        {attachment.filename}
+                        <span>{attachment.filename}</span>
+                        <button
+                          aria-label={t("attachmentRemove").replace("{filename}", attachment.filename)}
+                          type="button"
+                          onClick={() => handleRemoveNewTicketAttachment(index)}
+                        >
+                          x
+                        </button>
                       </li>
                     ))}
                   </ul>

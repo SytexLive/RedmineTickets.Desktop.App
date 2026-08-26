@@ -167,6 +167,39 @@ describe("App", () => {
     expect(checkAndInstallUpdateMock).toHaveBeenCalled();
   });
 
+  it("shows the current app version in the header", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Version header ticket")]]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Version header ticket")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Was ist neu in Version 0.8.0" }))
+      .toHaveTextContent("v0.8.0");
+  });
+
+  it("opens release notes from the app version", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Release notes ticket")]]
+    });
+
+    render(<App />);
+
+    await screen.findByText("Release notes ticket");
+    fireEvent.click(screen.getByRole("button", { name: "Was ist neu in Version 0.8.0" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Was ist neu in Version 0.8.0" });
+    expect(within(dialog).getByText("Was ist neu in v0.8.0?")).toBeInTheDocument();
+    expect(within(dialog).getByText("Ticket-Suche und Filter \"Nur neue\"")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Versionsinfo schließen" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Was ist neu in Version 0.8.0" })).toBeNull();
+    });
+  });
+
   it("hides the current update status after a short delay", async () => {
     checkAndInstallUpdateMock.mockResolvedValue({ status: "current" });
     mockTicketApp({
@@ -623,7 +656,166 @@ describe("App", () => {
     });
   });
 
-  it("does not show loading or refetch when selecting an already cached ticket tab", async () => {
+  it("disables the comment dialog save button while changes are saving", async () => {
+    const commentSave = deferred<void>();
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") {
+        return Promise.resolve([{ index: 0, label: "Monitor 1", isPrimary: true }]);
+      }
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_assignable_users") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Login reparieren")]);
+      }
+      if (command === "add_ticket_comment") {
+        return commentSave.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+    fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+    fireEvent.change(screen.getByPlaceholderText("Kommentar"), {
+      target: { value: "Bitte übernehmen." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Änderungen speichern" }));
+
+    expect(screen.getByRole("button", { name: "Speichert" })).toBeDisabled();
+
+    await act(async () => {
+      commentSave.resolve();
+    });
+  });
+
+  it("shows ticket counts in the bottom tab navigation", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") {
+        return Promise.resolve([
+          ticketFixture(42, "First watched ticket"),
+          ticketFixture(43, "Second watched ticket")
+        ]);
+      }
+      if (command === "fetch_created_open_tickets") {
+        return Promise.resolve([]);
+      }
+      if (command === "fetch_open_tickets") {
+        return Promise.resolve([
+          ticketFixture(44, "User ticket"),
+          ticketFixture(45, "Another user ticket"),
+          ticketFixture(46, "Third user ticket")
+        ]);
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Assigned ticket")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("fetch_watched_open_tickets", {
+        settings: settingsFixture()
+      });
+      expect(invokeMock).toHaveBeenCalledWith("fetch_created_open_tickets", {
+        settings: settingsFixture()
+      });
+      expect(invokeMock).toHaveBeenCalledWith("fetch_open_tickets", {
+        settings: settingsFixture()
+      });
+    });
+
+    expect(screen.getByRole("button", { name: "Meine offenen Tickets" }).textContent).toContain("1");
+    expect(screen.getByRole("button", { name: "Beobachtete Tickets" }).textContent).toContain("2");
+    expect(screen.getByRole("button", { name: "Erstellte Tickets" }).textContent).toContain("0");
+    expect(screen.getByRole("button", { name: "Benutzer" }).textContent).toContain("3");
+  });
+
+  it("shows loading badges for ticket tabs until their counts are loaded", async () => {
+    const watchedRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    const createdRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    const usersRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_projects") return Promise.resolve([]);
+      if (command === "fetch_trackers") return Promise.resolve([]);
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(41, "Assigned ticket")]);
+      }
+      if (command === "fetch_watched_open_tickets") {
+        return watchedRefresh.promise;
+      }
+      if (command === "fetch_created_open_tickets") {
+        return createdRefresh.promise;
+      }
+      if (command === "fetch_open_tickets") {
+        return usersRefresh.promise;
+      }
+      return Promise.resolve();
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Assigned ticket")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("button", { name: "Beobachtete Tickets" }))
+        .getByRole("status", { name: "Lädt" })
+    ).toHaveClass("bottom-ticket-tab-spinner");
+    expect(
+      within(screen.getByRole("button", { name: "Benutzer" }))
+        .getByRole("status", { name: "Lädt" })
+    ).toHaveClass("bottom-ticket-tab-spinner");
+
+    await act(async () => {
+      watchedRefresh.resolve([ticketFixture(42, "Watched ticket")]);
+      createdRefresh.resolve([]);
+      usersRefresh.resolve([
+        ticketFixture(44, "User ticket"),
+        ticketFixture(45, "Another user ticket")
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Beobachtete Tickets" }).textContent).toContain("1");
+      expect(screen.getByRole("button", { name: "Erstellte Tickets" }).textContent).toContain("0");
+      expect(screen.getByRole("button", { name: "Benutzer" }).textContent).toContain("2");
+    });
+    expect(
+      within(screen.getByRole("button", { name: "Beobachtete Tickets" }))
+        .queryByRole("status", { name: "Lädt" })
+    ).toBeNull();
+  });
+
+  it("keeps cached tab content visible while refreshing a selected cached ticket tab", async () => {
     const watchedRefresh = deferred<ReturnType<typeof ticketFixture>[]>();
     let watchedFetchCount = 0;
     invokeMock.mockImplementation((command: string) => {
@@ -662,7 +854,7 @@ describe("App", () => {
 
     expect(screen.getByText("Watched ticket")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
-    expect(watchedFetchCount).toBe(2);
+    expect(watchedFetchCount).toBe(3);
 
     await act(async () => {
       watchedRefresh.resolve([ticketFixture(43, "Updated watched ticket")]);
@@ -1049,7 +1241,7 @@ describe("App", () => {
       "Mina Meyer2"
     ]);
     expect(screen.queryByRole("progressbar", { name: "Lädt" })).toBeNull();
-    expect(userFetchCount).toBe(2);
+    expect(userFetchCount).toBe(3);
 
     await act(async () => {
       usersRefresh.resolve([
@@ -1383,6 +1575,79 @@ describe("App", () => {
               contentType: "image/png",
               content: [1, 2, 3]
             },
+            {
+              filename: "paste.jpg",
+              contentType: "image/jpeg",
+              content: [4, 5]
+            }
+          ]
+        })
+      });
+    });
+  });
+
+  it("removes attachments before creating a ticket", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_assignable_users") return Promise.resolve([]);
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Bilder anhängen" }
+    });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
+      target: { value: "2" }
+    });
+
+    const description = within(dialog).getByLabelText("Beschreibung");
+    const firstFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
+      type: "image/png"
+    });
+    const secondFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
+      type: "image/jpeg"
+    });
+
+    fireEvent.drop(description, {
+      dataTransfer: {
+        files: [firstFile, secondFile]
+      }
+    });
+
+    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
+    expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang drop.png entfernen" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("create_ticket", {
+        settings: settingsFixture(),
+        ticket: expect.objectContaining({
+          attachments: [
             {
               filename: "paste.jpg",
               contentType: "image/jpeg",
@@ -1739,6 +2004,33 @@ describe("App", () => {
       "ticket-row-unread"
     );
     expect(audioMock).not.toHaveBeenCalled();
+  });
+
+  it("marks all unread tickets as read from the ticket list toolbar", async () => {
+    mockTicketApp({
+      ticketState: { knownTicketIds: [42, 43], unreadTicketIds: [42, 43] },
+      ticketBatches: [[
+        ticketFixture(42, "First unread ticket"),
+        ticketFixture(43, "Second unread ticket")
+      ]]
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("button", { name: /first unread ticket/i })
+    ).toHaveClass("ticket-row-unread");
+
+    fireEvent.click(screen.getByRole("button", { name: "Alle als gelesen markieren" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("save_ticket_state", {
+        state: { knownTicketIds: [42, 43], unreadTicketIds: [] }
+      });
+    });
+    expect(screen.getByRole("button", { name: /first unread ticket/i })).not.toHaveClass(
+      "ticket-row-unread"
+    );
   });
 
   it("previews the selected ticket notification sound from settings", async () => {

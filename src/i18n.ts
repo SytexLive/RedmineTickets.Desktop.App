@@ -3,6 +3,7 @@ export type Language = "de" | "en";
 export type TranslationKey =
   | "addComment"
   | "apiKey"
+  | "attachmentRemove"
   | "assignTo"
   | "assignedToId"
   | "accentColor"
@@ -12,10 +13,13 @@ export type TranslationKey =
   | "allCustomers"
   | "closeCommentDialog"
   | "closeCreateTicketDialog"
+  | "closeVersionInfo"
   | "collapsePanel"
   | "comment"
   | "createTicket"
+  | "createdPrefix"
   | "customer"
+  | "daysAgo"
   | "chooseOption"
   | "description"
   | "descriptionAttachmentHint"
@@ -31,8 +35,12 @@ export type TranslationKey =
   | "checkForUpdates"
   | "internalComment"
   | "internalCommentHint"
+  | "justNow"
   | "language"
   | "loading"
+  | "markAllRead"
+  | "minutesAgo"
+  | "hoursAgo"
   | "myOpenTicketsTab"
   | "monitor"
   | "noOpenUsers"
@@ -41,6 +49,7 @@ export type TranslationKey =
   | "noAssignment"
   | "noStatusesLoaded"
   | "noUsersLoaded"
+  | "onlyNewTickets"
   | "openCount"
   | "openInBrowser"
   | "openTicketNumber"
@@ -52,10 +61,17 @@ export type TranslationKey =
   | "redmineUrl"
   | "refreshInterval"
   | "refreshTickets"
+  | "releaseNoteAttachments"
+  | "releaseNoteCommentSaving"
+  | "releaseNoteCompactCards"
+  | "releaseNoteSearchFilter"
+  | "releaseNoteTabCounts"
+  | "releaseNoteWatcherFix"
   | "save"
   | "saveComment"
   | "saveChanges"
   | "saving"
+  | "searchTickets"
   | "settings"
   | "showSettings"
   | "side"
@@ -83,10 +99,13 @@ export type TranslationKey =
   | "trackerId"
   | "unassignedUser"
   | "unpinPanel"
+  | "updatedPrefix"
   | "updateChecking"
   | "updateCurrent"
   | "updateInstalled"
   | "updateFailed"
+  | "versionInfo"
+  | "whatsNewTitle"
   | "usersTab"
   | "watchedTicketsTab";
 
@@ -94,6 +113,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   de: {
     addComment: "Kommentar hinzuf\u00fcgen",
     apiKey: "API-Schl\u00fcssel",
+    attachmentRemove: "Anhang {filename} entfernen",
     assignTo: "Zuweisen an",
     assignedToId: "Zuweisung-ID",
     accentColor: "Akzentfarbe",
@@ -103,10 +123,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     allCustomers: "Alle Kunden",
     closeCommentDialog: "Kommentardialog schlie\u00dfen",
     closeCreateTicketDialog: "Ticketdialog schlie\u00dfen",
+    closeVersionInfo: "Versionsinfo schließen",
     collapsePanel: "Panel einklappen",
     comment: "Kommentar",
     createTicket: "Ticket erstellen",
+    createdPrefix: "Erst.",
     customer: "Kunde",
+    daysAgo: " T.",
     chooseOption: "Bitte wählen",
     description: "Beschreibung",
     descriptionAttachmentHint: "Bilder hier hineinziehen oder einfügen",
@@ -122,8 +145,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     checkForUpdates: "Nach Updates suchen",
     internalComment: "Interner Kommentar",
     internalCommentHint: "Nur Benutzer mit Redmine-Berechtigung für private Notizen sehen diesen Kommentar.",
+    justNow: "Gerade eben",
     language: "Sprache",
     loading: "L\u00e4dt",
+    markAllRead: "Alle als gelesen markieren",
+    minutesAgo: " Min.",
+    hoursAgo: " Std.",
     myOpenTicketsTab: "Meine offenen Tickets",
     monitor: "Monitor",
     noOpenUsers: "Keine offenen Tickets f\u00fcr Benutzer",
@@ -132,6 +159,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     noAssignment: "Nicht ändern",
     noStatusesLoaded: "Keine Status geladen",
     noUsersLoaded: "Keine Benutzer geladen",
+    onlyNewTickets: "Nur neue",
     openCount: "offen",
     openInBrowser: "Im Browser \u00f6ffnen",
     openTicketNumber: "Ticketnummer \u00f6ffnen",
@@ -143,10 +171,17 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     redmineUrl: "Redmine URL",
     refreshInterval: "Aktualisierungsintervall",
     refreshTickets: "Tickets aktualisieren",
+    releaseNoteAttachments: "Anhänge beim Erstellen wieder entfernen",
+    releaseNoteCommentSaving: "Speicherstatus beim Kommentar sichtbar",
+    releaseNoteCompactCards: "Kompaktere Ticketkarten mit Aktualisiert-Datum",
+    releaseNoteSearchFilter: "Ticket-Suche und Filter \"Nur neue\"",
+    releaseNoteTabCounts: "Kompakte Zähler in den Ticket-Reitern",
+    releaseNoteWatcherFix: "Stabilerer Dev-Start durch ignorierte Tauri-Build-Dateien",
     save: "Speichern",
     saveComment: "Kommentar speichern",
     saveChanges: "\u00c4nderungen speichern",
     saving: "Speichert",
+    searchTickets: "Tickets suchen",
     settings: "Einstellungen",
     showSettings: "Einstellungen anzeigen",
     side: "Seite",
@@ -174,16 +209,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker-ID",
     unassignedUser: "Nicht zugewiesen",
     unpinPanel: "Panel l\u00f6sen",
+    updatedPrefix: "Akt.",
     updateChecking: "Updates werden gepr\u00fcft",
     updateCurrent: "App ist aktuell",
     updateInstalled: "Update {version} installiert",
     updateFailed: "Update-Pr\u00fcfung fehlgeschlagen",
+    versionInfo: "Was ist neu in Version {version}",
+    whatsNewTitle: "Was ist neu in v{version}?",
     usersTab: "Benutzer",
     watchedTicketsTab: "Beobachtete Tickets"
   },
   en: {
     addComment: "Add comment",
     apiKey: "API key",
+    attachmentRemove: "Remove attachment {filename}",
     assignTo: "Assign to",
     assignedToId: "Assignee ID",
     accentColor: "Accent color",
@@ -193,10 +232,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     allCustomers: "All customers",
     closeCommentDialog: "Close comment dialog",
     closeCreateTicketDialog: "Close ticket dialog",
+    closeVersionInfo: "Close version info",
     collapsePanel: "Collapse panel",
     comment: "Comment",
     createTicket: "Create ticket",
+    createdPrefix: "Created",
     customer: "Customer",
+    daysAgo: "d",
     chooseOption: "Choose",
     description: "Description",
     descriptionAttachmentHint: "Drop or paste images here",
@@ -212,8 +254,12 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     checkForUpdates: "Check for updates",
     internalComment: "Internal comment",
     internalCommentHint: "Only users with Redmine permission for private notes can see this comment.",
+    justNow: "Just now",
     language: "Language",
     loading: "Loading",
+    markAllRead: "Mark all as read",
+    minutesAgo: "m",
+    hoursAgo: "h",
     myOpenTicketsTab: "My open tickets",
     monitor: "Monitor",
     noOpenUsers: "No open tickets for users",
@@ -222,6 +268,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     noAssignment: "Do not change",
     noStatusesLoaded: "No statuses loaded",
     noUsersLoaded: "No users loaded",
+    onlyNewTickets: "Only new",
     openCount: "open",
     openInBrowser: "Open in browser",
     openTicketNumber: "Open ticket number",
@@ -233,10 +280,17 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     redmineUrl: "Redmine URL",
     refreshInterval: "Refresh interval",
     refreshTickets: "Refresh tickets",
+    releaseNoteAttachments: "Remove attachments while creating a ticket",
+    releaseNoteCommentSaving: "Visible saving state for comments",
+    releaseNoteCompactCards: "More compact ticket cards with updated time",
+    releaseNoteSearchFilter: "Ticket search and \"Only new\" filter",
+    releaseNoteTabCounts: "Compact counts in the ticket tabs",
+    releaseNoteWatcherFix: "More stable dev startup by ignoring Tauri build files",
     save: "Save",
     saveComment: "Save comment",
     saveChanges: "Save changes",
     saving: "Saving",
+    searchTickets: "Search tickets",
     settings: "Settings",
     showSettings: "Show settings",
     side: "Side",
@@ -264,10 +318,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker ID",
     unassignedUser: "Unassigned",
     unpinPanel: "Unpin panel",
+    updatedPrefix: "Upd.",
     updateChecking: "Checking for updates",
     updateCurrent: "App is up to date",
     updateInstalled: "Update {version} installed",
     updateFailed: "Update check failed",
+    versionInfo: "What's new in version {version}",
+    whatsNewTitle: "What's new in v{version}?",
     usersTab: "Users",
     watchedTicketsTab: "Watched tickets"
   }

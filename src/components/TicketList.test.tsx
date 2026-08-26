@@ -193,8 +193,8 @@ describe("TicketList", () => {
     });
 
     expect(screen.getAllByRole("button").map((row) => row.textContent)).toEqual([
-      "#14DesktopNormalCreated laterBugNew",
-      "#13DesktopNormalCreated earlierBugNew"
+      expect.stringContaining("Created later"),
+      expect.stringContaining("Created earlier")
     ]);
   });
 
@@ -249,6 +249,178 @@ describe("TicketList", () => {
     expect(screen.getByText("Beta ticket")).toBeTruthy();
   });
 
+  it("filters tickets by search text across ticket number and subject", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 1201,
+            subject: "Fix login timeout",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/1201"
+          },
+          {
+            id: 1302,
+            subject: "Update invoice layout",
+            status: "New",
+            priority: "Normal",
+            project: "Billing",
+            projectId: 18,
+            tracker: "Feature",
+            updatedAt: "2026-08-11T08:00:00Z",
+            url: "https://redmine.example.com/issues/1302"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Search tickets"), {
+      target: { value: "1201" }
+    });
+
+    expect(screen.getByText("Fix login timeout")).toBeTruthy();
+    expect(screen.queryByText("Update invoice layout")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Search tickets"), {
+      target: { value: "invoice" }
+    });
+
+    expect(screen.queryByText("Fix login timeout")).toBeNull();
+    expect(screen.getByText("Update invoice layout")).toBeTruthy();
+  });
+
+  it("can show only unread tickets", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 21,
+            subject: "Unread ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/21"
+          },
+          {
+            id: 22,
+            subject: "Read ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/22"
+          }
+        ]}
+        unreadTicketIds={[21]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Only new" }));
+
+    expect(screen.getByText("Unread ticket")).toBeTruthy();
+    expect(screen.queryByText("Read ticket")).toBeNull();
+  });
+
+  it("shows compact relative updated time on ticket rows", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-10T10:30:00Z"));
+
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 23,
+            subject: "Recently updated ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/23"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    expect(screen.getByText("Upd. 2h")).toBeTruthy();
+    vi.useRealTimers();
+  });
+
+  it("keeps the unread filter beside the ticket search field", () => {
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 24,
+            subject: "Search layout ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            updatedAt: "2026-08-10T08:00:00Z",
+            url: "https://redmine.example.com/issues/24"
+          }
+        ]}
+        unreadTicketIds={[24]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    const searchField = screen.getByLabelText("Search tickets");
+    const unreadFilter = screen.getByRole("checkbox", { name: "Only new" });
+    const searchRow = searchField.closest(".ticket-list-search-row");
+
+    expect(searchRow).not.toBeNull();
+    expect(searchRow).toBe(unreadFilter.closest(".ticket-list-search-row"));
+  });
+
+  it("renders only updated time right aligned in the metadata row", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T08:00:00Z"));
+
+    render(
+      <TicketList
+        tickets={[
+          {
+            id: 25,
+            subject: "Separate time row ticket",
+            status: "New",
+            priority: "Normal",
+            project: "Desktop",
+            projectId: 12,
+            tracker: "Bug",
+            createdAt: "2026-08-10T08:00:00Z",
+            updatedAt: "2026-08-11T08:00:00Z",
+            url: "https://redmine.example.com/issues/25"
+          }
+        ]}
+        onOpenTicket={() => undefined}
+      />
+    );
+
+    const bottomRow = screen.getByText("Bug").closest(".ticket-row-bottom");
+
+    expect(bottomRow).toContainElement(screen.getByText("Upd. 1d"));
+    expect(screen.getByText("Upd. 1d")).toHaveClass("ticket-row-updated-time");
+    expect(screen.queryByText("Created 2d")).toBeNull();
+    vi.useRealTimers();
+  });
+
   it("sorts tickets by customer project when selected", () => {
     render(
       <TicketList
@@ -285,8 +457,8 @@ describe("TicketList", () => {
     });
 
     expect(screen.getAllByRole("button").map((row) => row.textContent)).toEqual([
-      "#18Alpha GmbHNormalAlpha ticketBugNew",
-      "#17Zeta GmbHNormalZeta ticketBugNew"
+      expect.stringContaining("Alpha ticket"),
+      expect.stringContaining("Zeta ticket")
     ]);
   });
 

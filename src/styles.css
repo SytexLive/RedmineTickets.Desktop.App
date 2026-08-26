@@ -116,6 +116,13 @@ textarea {
   min-width: 0;
 }
 
+.panel-title-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
 .panel-header h1 {
   margin: 0;
   font-size: 16px;
@@ -127,6 +134,24 @@ textarea {
   margin: 3px 0 0;
   color: #697282;
   font-size: 12px;
+}
+
+.app-version-button {
+  border: 1px solid #d9dee7;
+  border-radius: 999px;
+  background: #f7f9fc;
+  color: #4d5868;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+}
+
+.app-version-button:hover {
+  border-color: #b7c1d0;
+  background: #eef2f7;
+  color: #1b1f24;
 }
 
 .header-actions {
@@ -288,7 +313,8 @@ textarea {
 }
 
 .comment-dialog,
-.create-ticket-dialog {
+.create-ticket-dialog,
+.version-info-dialog {
   position: fixed;
   right: 12px;
   bottom: 12px;
@@ -302,6 +328,16 @@ textarea {
   background: #ffffff;
   box-shadow: 0 14px 34px rgb(18 30 48 / 18%);
   padding: 10px;
+}
+
+.version-info-dialog ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .create-ticket-dialog {
@@ -413,8 +449,29 @@ textarea {
 }
 
 .create-ticket-attachments li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   overflow-wrap: anywhere;
   color: #16253b;
+}
+
+.create-ticket-attachments button {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #cbd3df;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #4d5868;
+  cursor: pointer;
+}
+
+.create-ticket-attachments button:hover {
+  border-color: #8796ad;
+  background: #f1f5fb;
 }
 
 .create-ticket-dialog input,
@@ -592,7 +649,24 @@ textarea {
   font-size: 11px;
 }
 
-.ticket-list-toolbar select {
+.ticket-list-search-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.ticket-list-toolbar .ticket-list-search {
+  grid-column: 1 / -1;
+}
+
+.ticket-list-search-row .ticket-list-search {
+  grid-column: auto;
+}
+
+.ticket-list-toolbar select,
+.ticket-list-toolbar input[type="search"] {
   width: 100%;
   height: 34px;
   border: 1px solid #cbd3df;
@@ -600,6 +674,47 @@ textarea {
   background: #ffffff;
   color: #1b1f24;
   padding: 6px 8px;
+}
+
+.ticket-list-toolbar input[type="search"]:focus,
+.ticket-list-toolbar select:focus {
+  outline: 2px solid var(--accent-color-focus);
+  outline-offset: 1px;
+  border-color: var(--accent-color);
+}
+
+.ticket-list-checkbox {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  flex-direction: row !important;
+  align-items: center;
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.ticket-list-checkbox input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent-color);
+}
+
+.ticket-list-toolbar-action {
+  align-self: end;
+  min-height: 34px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1b1f24;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 8px;
+}
+
+.ticket-list-toolbar-action:hover {
+  border-color: #8796ad;
+  background: #f1f5fb;
 }
 
 .ticket-list {
@@ -633,6 +748,7 @@ textarea {
 }
 
 .bottom-ticket-tabs button {
+  position: relative;
   display: grid;
   min-width: 0;
   min-height: 46px;
@@ -650,6 +766,37 @@ textarea {
   padding: 5px 3px;
 }
 
+.bottom-ticket-tab-count {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  display: inline-grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #4d5868;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.bottom-ticket-tab-spinner {
+  min-width: 16px;
+  padding: 0;
+  border: 2px solid #d6dde8;
+  border-top-color: var(--accent-color);
+  background: transparent;
+  animation: bottom-ticket-tab-spinner-spin 0.8s linear infinite;
+}
+
+@keyframes bottom-ticket-tab-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .bottom-ticket-tabs button:hover {
   background: #f1f5fb;
   color: #1b1f24;
@@ -664,6 +811,17 @@ textarea {
   border-color: var(--accent-color);
   background: var(--accent-color-soft);
   color: var(--accent-color);
+}
+
+.bottom-ticket-tabs button.is-active .bottom-ticket-tab-count {
+  background: var(--accent-color);
+  color: #ffffff;
+}
+
+.bottom-ticket-tabs button.is-active .bottom-ticket-tab-spinner {
+  border-color: rgb(255 255 255 / 55%);
+  border-top-color: #ffffff;
+  background: transparent;
 }
 
 .bottom-ticket-tab-icon {
@@ -998,6 +1156,17 @@ textarea {
   gap: 8px;
   color: #697282;
   font-size: 12px;
+}
+
+.ticket-row-bottom {
+  flex-wrap: wrap;
+  row-gap: 3px;
+}
+
+.ticket-row-updated-time {
+  margin-left: auto;
+  color: #4d5868;
+  white-space: nowrap;
 }
 
 .ticket-id {

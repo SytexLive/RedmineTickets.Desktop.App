@@ -99,7 +99,6 @@ export type TranslationKey =
   | "trackerId"
   | "unassignedUser"
   | "unpinPanel"
-  | "updatedPrefix"
   | "updateChecking"
   | "updateCurrent"
   | "updateInstalled"
@@ -209,7 +208,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker-ID",
     unassignedUser: "Nicht zugewiesen",
     unpinPanel: "Panel l\u00f6sen",
-    updatedPrefix: "Akt.",
     updateChecking: "Updates werden gepr\u00fcft",
     updateCurrent: "App ist aktuell",
     updateInstalled: "Update {version} installiert",
@@ -318,7 +316,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     trackerId: "Tracker ID",
     unassignedUser: "Unassigned",
     unpinPanel: "Unpin panel",
-    updatedPrefix: "Upd.",
     updateChecking: "Checking for updates",
     updateCurrent: "App is up to date",
     updateInstalled: "Update {version} installed",

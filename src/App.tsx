@@ -1161,7 +1161,6 @@ export function App() {
                 search: t("searchTickets"),
                 sortBy: t("sortBy"),
                 updatedDesc: t("sortUpdatedDesc"),
-                updatedPrefix: t("updatedPrefix"),
                 createdDesc: t("sortCreatedDesc"),
                 priorityDesc: t("sortPriorityDesc"),
                 projectAsc: t("sortProjectAsc"),

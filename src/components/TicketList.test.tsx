@@ -333,7 +333,7 @@ describe("TicketList", () => {
     expect(screen.queryByText("Read ticket")).toBeNull();
   });
 
-  it("shows compact relative updated time on ticket rows", () => {
+  it("shows compact relative updated time without a prefix on ticket rows", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T10:30:00Z"));
 
@@ -356,7 +356,8 @@ describe("TicketList", () => {
       />
     );
 
-    expect(screen.getByText("Upd. 2h")).toBeTruthy();
+    expect(screen.getByText("2h")).toHaveClass("ticket-row-updated-time");
+    expect(screen.queryByText("Upd. 2h")).toBeNull();
     vi.useRealTimers();
   });
 
@@ -415,8 +416,9 @@ describe("TicketList", () => {
 
     const bottomRow = screen.getByText("Bug").closest(".ticket-row-bottom");
 
-    expect(bottomRow).toContainElement(screen.getByText("Upd. 1d"));
-    expect(screen.getByText("Upd. 1d")).toHaveClass("ticket-row-updated-time");
+    expect(bottomRow).toContainElement(screen.getByText("1d"));
+    expect(screen.getByText("1d")).toHaveClass("ticket-row-updated-time");
+    expect(screen.queryByText("Upd. 1d")).toBeNull();
     expect(screen.queryByText("Created 2d")).toBeNull();
     vi.useRealTimers();
   });

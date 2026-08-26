@@ -25,7 +25,6 @@ export type TicketSortLabels = {
   search: string;
   sortBy: string;
   updatedDesc: string;
-  updatedPrefix: string;
   createdDesc: string;
   priorityDesc: string;
   projectAsc: string;
@@ -47,7 +46,6 @@ const defaultSortLabels: TicketSortLabels = {
   search: "Search tickets",
   sortBy: "Sort by",
   updatedDesc: "Updated newest",
-  updatedPrefix: "Upd.",
   createdDesc: "Created newest",
   priorityDesc: "Priority highest",
   projectAsc: "Customer A-Z",
@@ -251,7 +249,7 @@ export function TicketList({
                 <span>{ticket.status}</span>
                 {updatedLabel ? (
                   <span className="ticket-row-updated-time">
-                    {`${labels.updatedPrefix} ${updatedLabel}`}
+                    {updatedLabel}
                   </span>
                 ) : null}
               </span>

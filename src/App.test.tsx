@@ -4,6 +4,8 @@ import { App } from "./App";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const checkAndInstallUpdateMock = vi.hoisted(() => vi.fn());
+const appVersionInfoLabel = `Was ist neu in Version ${__APP_VERSION__}`;
+const appVersionTitle = `Was ist neu in v${__APP_VERSION__}?`;
 
 function settingsFixture() {
   return {
@@ -175,8 +177,8 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Version header ticket")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Was ist neu in Version 0.8.0" }))
-      .toHaveTextContent("v0.8.0");
+    expect(screen.getByRole("button", { name: appVersionInfoLabel }))
+      .toHaveTextContent(`v${__APP_VERSION__}`);
   });
 
   it("opens release notes from the app version", async () => {
@@ -187,16 +189,16 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByText("Release notes ticket");
-    fireEvent.click(screen.getByRole("button", { name: "Was ist neu in Version 0.8.0" }));
+    fireEvent.click(screen.getByRole("button", { name: appVersionInfoLabel }));
 
-    const dialog = screen.getByRole("dialog", { name: "Was ist neu in Version 0.8.0" });
-    expect(within(dialog).getByText("Was ist neu in v0.8.0?")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: appVersionInfoLabel });
+    expect(within(dialog).getByText(appVersionTitle)).toBeInTheDocument();
     expect(within(dialog).getByText("Ticket-Suche und Filter \"Nur neue\"")).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Versionsinfo schließen" }));
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Was ist neu in Version 0.8.0" })).toBeNull();
+      expect(screen.queryByRole("dialog", { name: appVersionInfoLabel })).toBeNull();
     });
   });
 

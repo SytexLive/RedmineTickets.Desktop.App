@@ -78,6 +78,10 @@ type TicketContextSubmenu = "assignee" | "status";
 
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
 const CONTEXT_MENU_MARGIN = 12;
+
+function parseQuickTicketNumber(value: string): number {
+  return Number(value.trim().replace(/^#/, ""));
+}
 const CONTEXT_MENU_WIDTH = 240;
 const UPDATE_SUCCESS_VISIBLE_MS = 4000;
 const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
@@ -626,7 +630,7 @@ export function App() {
       return;
     }
 
-    const ticketId = Number(quickTicketNumber.trim());
+    const ticketId = parseQuickTicketNumber(quickTicketNumber);
     markTicketAsRead(ticketId);
     try {
       await openTicketUrl(buildTicketUrl(settings.baseUrl, ticketId));
@@ -1074,7 +1078,7 @@ export function App() {
                     void handleOpenTicketNumber();
                   }
                 }}
-                pattern="[0-9]*"
+                pattern="#?[0-9]*"
                 placeholder="#12345"
                 title={t("openTicketNumber")}
                 value={quickTicketNumber}

@@ -160,6 +160,8 @@ struct CommentUpdateIssue {
     notes: String,
     #[serde(skip_serializing_if = "is_false")]
     private_notes: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uploads: Option<Vec<CreateIssueUpload>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -287,9 +289,19 @@ pub fn project_memberships_url(base_url: &str, project_id: u64) -> String {
     )
 }
 
-pub fn validate_comment(comment: &str) -> Result<(), String> {
-    if comment.trim().is_empty() {
+pub fn validate_comment_update(
+    comment: &str,
+    attachments: &[NewTicketAttachment],
+) -> Result<(), String> {
+    if comment.trim().is_empty() && attachments.is_empty() {
         return Err("Comment must not be empty".to_string());
+    }
+
+    if attachments
+        .iter()
+        .any(|attachment| attachment.filename.trim().is_empty())
+    {
+        return Err("Ticket attachment filename must not be empty".to_string());
     }
 
     Ok(())
@@ -333,6 +345,40 @@ fn map_redmine_response_status(status: reqwest::StatusCode) -> Result<(), String
     }
 
     Ok(())
+}
+
+async fn upload_attachments(
+    settings: &RedmineSettings,
+    client: &reqwest::Client,
+    attachments: &[NewTicketAttachment],
+) -> Result<Vec<CreateIssueUpload>, String> {
+    let mut uploads = Vec::new();
+
+    for attachment in attachments {
+        let response = client
+            .post(upload_url(&settings.base_url, attachment.filename.trim()))
+            .header("X-Redmine-API-Key", &settings.api_key)
+            .header("Content-Type", "application/octet-stream")
+            .body(attachment.content.clone())
+            .send()
+            .await
+            .map_err(|_| "Network failure while uploading Redmine attachment".to_string())?;
+
+        map_redmine_response_status(response.status())?;
+
+        let parsed = response
+            .json::<UploadResponse>()
+            .await
+            .map_err(|_| "Redmine returned an unexpected response".to_string())?;
+
+        uploads.push(CreateIssueUpload {
+            token: parsed.upload.token,
+            filename: attachment.filename.trim().to_string(),
+            content_type: attachment.content_type.trim().to_string(),
+        });
+    }
+
+    Ok(uploads)
 }
 
 async fn fetch_open_tickets_with_filter(
@@ -418,31 +464,7 @@ pub async fn create_ticket(settings: RedmineSettings, ticket: NewTicket) -> Resu
             Some(trimmed_value)
         }
     });
-    let mut uploads = Vec::new();
-
-    for attachment in &ticket.attachments {
-        let response = client
-            .post(upload_url(&settings.base_url, attachment.filename.trim()))
-            .header("X-Redmine-API-Key", &settings.api_key)
-            .header("Content-Type", "application/octet-stream")
-            .body(attachment.content.clone())
-            .send()
-            .await
-            .map_err(|_| "Network failure while uploading Redmine attachment".to_string())?;
-
-        map_redmine_response_status(response.status())?;
-
-        let parsed = response
-            .json::<UploadResponse>()
-            .await
-            .map_err(|_| "Redmine returned an unexpected response".to_string())?;
-
-        uploads.push(CreateIssueUpload {
-            token: parsed.upload.token,
-            filename: attachment.filename.trim().to_string(),
-            content_type: attachment.content_type.trim().to_string(),
-        });
-    }
+    let uploads = upload_attachments(&settings, &client, &ticket.attachments).await?;
 
     let response = client
         .post(issue_create_url(&settings.base_url))
@@ -652,17 +674,26 @@ pub async fn add_ticket_comment(
     ticket_id: u64,
     comment: String,
     private_notes: bool,
+    attachments: Option<Vec<NewTicketAttachment>>,
 ) -> Result<(), String> {
     settings.validate()?;
-    validate_comment(&comment)?;
+    let attachments = attachments.unwrap_or_default();
+    validate_comment_update(&comment, &attachments)?;
+    let client = redmine_client();
+    let uploads = upload_attachments(&settings, &client, &attachments).await?;
 
-    let response = redmine_client()
+    let response = client
         .put(issue_update_url(&settings.base_url, ticket_id))
         .header("X-Redmine-API-Key", settings.api_key)
         .json(&UpdateIssueBody {
             issue: CommentUpdateIssue {
                 notes: comment.trim().to_string(),
                 private_notes,
+                uploads: if uploads.is_empty() {
+                    None
+                } else {
+                    Some(uploads)
+                },
             },
         })
         .send()
@@ -793,9 +824,9 @@ mod tests {
     }
 
     #[test]
-    fn rejects_blank_ticket_comment() {
+    fn rejects_blank_ticket_comment_update() {
         assert_eq!(
-            validate_comment("   ").unwrap_err(),
+            validate_comment_update("   ", &[]).unwrap_err(),
             "Comment must not be empty"
         );
     }
@@ -806,6 +837,7 @@ mod tests {
             issue: CommentUpdateIssue {
                 notes: "Internal note".to_string(),
                 private_notes: true,
+                uploads: None,
             },
         };
 
@@ -826,6 +858,7 @@ mod tests {
             issue: CommentUpdateIssue {
                 notes: "Public note".to_string(),
                 private_notes: false,
+                uploads: None,
             },
         };
 
@@ -834,6 +867,37 @@ mod tests {
             serde_json::json!({
                 "issue": {
                     "notes": "Public note"
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn serializes_ticket_comment_uploads() {
+        let body = UpdateIssueBody {
+            issue: CommentUpdateIssue {
+                notes: "Screenshot attached".to_string(),
+                private_notes: false,
+                uploads: Some(vec![CreateIssueUpload {
+                    token: "upload-token".to_string(),
+                    filename: "screen shot.png".to_string(),
+                    content_type: "image/png".to_string(),
+                }]),
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_value(body).unwrap(),
+            serde_json::json!({
+                "issue": {
+                    "notes": "Screenshot attached",
+                    "uploads": [
+                        {
+                            "token": "upload-token",
+                            "filename": "screen shot.png",
+                            "content_type": "image/png"
+                        }
+                    ]
                 }
             })
         );

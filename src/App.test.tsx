@@ -408,6 +408,59 @@ describe("App", () => {
     });
   });
 
+  it("adds and removes image attachments from the comment dialog", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Login reparieren")]]
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+    fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Kommentar hinzufügen" });
+    const commentInput = within(dialog).getByPlaceholderText("Kommentar");
+    fireEvent.change(commentInput, {
+      target: { value: "Screenshots anbei." }
+    });
+
+    const firstFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
+      type: "image/png"
+    });
+    const secondFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
+      type: "image/jpeg"
+    });
+
+    fireEvent.drop(commentInput, {
+      dataTransfer: {
+        files: [firstFile, secondFile]
+      }
+    });
+
+    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
+    expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang drop.png entfernen" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Änderungen speichern" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("add_ticket_comment", {
+        settings: settingsFixture(),
+        ticketId: 42,
+        comment: "Screenshots anbei.",
+        privateNotes: false,
+        attachments: [
+          {
+            filename: "paste.jpg",
+            contentType: "image/jpeg",
+            content: [4, 5]
+          }
+        ]
+      });
+    });
+  });
+
   it("puts add comment first in the ticket context menu and assigns from a submenu", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {

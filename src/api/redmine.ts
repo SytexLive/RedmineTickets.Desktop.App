@@ -156,9 +156,10 @@ export function addTicketComment(
   settings: RedmineSettings,
   ticketId: number,
   comment: string,
-  privateNotes: boolean
+  privateNotes: boolean,
+  attachments?: NewTicketAttachment[]
 ): Promise<void> {
-  return invoke("add_ticket_comment", { settings, ticketId, comment, privateNotes });
+  return invoke("add_ticket_comment", { settings, ticketId, comment, privateNotes, attachments });
 }
 
 export function assignTicket(

@@ -226,6 +226,7 @@ export function App() {
   const [commentTicket, setCommentTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState("");
   const [commentPrivateNotes, setCommentPrivateNotes] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState<NewTicketAttachment[]>([]);
   const [savingComment, setSavingComment] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [selectedCommentStatusId, setSelectedCommentStatusId] = useState("");
@@ -679,8 +680,14 @@ export function App() {
 
     setSavingComment(true);
     try {
-      if (comment.trim().length > 0) {
-        await addTicketComment(settings, commentTicket.id, comment, commentPrivateNotes);
+      if (comment.trim().length > 0 || commentAttachments.length > 0) {
+        await addTicketComment(
+          settings,
+          commentTicket.id,
+          comment,
+          commentPrivateNotes,
+          commentAttachments.length > 0 ? commentAttachments : undefined
+        );
       }
       if (selectedAssigneeId) {
         await assignTicket(settings, commentTicket.id, Number(selectedAssigneeId));
@@ -690,6 +697,7 @@ export function App() {
       }
       setComment("");
       setCommentPrivateNotes(false);
+      setCommentAttachments([]);
       setSelectedAssigneeId("");
       setSelectedCommentStatusId("");
       setCommentTicket(null);
@@ -769,6 +777,7 @@ export function App() {
     setCommentTicket(ticket);
     setComment("");
     setCommentPrivateNotes(false);
+    setCommentAttachments([]);
     setSelectedAssigneeId("");
     setSelectedCommentStatusId("");
     setAssignableUsers([]);
@@ -800,19 +809,44 @@ export function App() {
     void refreshTicketCreateOptions(settings);
   }
 
-  async function handleAddNewTicketFiles(files: FileList | File[]) {
+  async function buildImageAttachments(files: FileList | File[]) {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (imageFiles.length === 0) {
-      return;
+      return [];
     }
 
-    const attachments = await Promise.all(
-      imageFiles.map(async (file) => ({
+    return Promise.all(
+      imageFiles.map(async (file): Promise<NewTicketAttachment> => ({
         filename: file.name,
         contentType: file.type || "application/octet-stream",
         content: Array.from(new Uint8Array(await file.arrayBuffer()))
       }))
     );
+  }
+
+  async function handleAddCommentFiles(files: FileList | File[]) {
+    const attachments = await buildImageAttachments(files);
+    if (attachments.length === 0) {
+      return;
+    }
+
+    setCommentAttachments((currentAttachments) => [
+      ...currentAttachments,
+      ...attachments
+    ]);
+  }
+
+  function handleRemoveCommentAttachment(attachmentIndex: number) {
+    setCommentAttachments((currentAttachments) =>
+      currentAttachments.filter((_, index) => index !== attachmentIndex)
+    );
+  }
+
+  async function handleAddNewTicketFiles(files: FileList | File[]) {
+    const attachments = await buildImageAttachments(files);
+    if (attachments.length === 0) {
+      return;
+    }
 
     setNewTicketAttachments((currentAttachments) => [
       ...currentAttachments,
@@ -1420,14 +1454,46 @@ export function App() {
               </div>
               <textarea
                 autoFocus
+                onDragOver={(event) => {
+                  event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  void handleAddCommentFiles(event.dataTransfer.files);
+                }}
+                onPaste={(event) => {
+                  if (event.clipboardData.files.length > 0) {
+                    void handleAddCommentFiles(event.clipboardData.files);
+                  }
+                }}
                 onChange={(event) => setComment(event.target.value)}
                 placeholder={t("comment")}
                 value={comment}
               />
+              {commentAttachments.length > 0 ? (
+                <div className="create-ticket-attachments">
+                  <span>{t("descriptionAttachments")}</span>
+                  <ul>
+                    {commentAttachments.map((attachment, index) => (
+                      <li key={`${attachment.filename}-${index}`}>
+                        <span>{attachment.filename}</span>
+                        <button
+                          aria-label={t("attachmentRemove").replace("{filename}", attachment.filename)}
+                          disabled={savingComment}
+                          type="button"
+                          onClick={() => handleRemoveCommentAttachment(index)}
+                        >
+                          x
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <label className="comment-dialog-checkbox">
                 <input
                   checked={commentPrivateNotes}
-                  disabled={comment.trim().length === 0}
+                  disabled={comment.trim().length === 0 && commentAttachments.length === 0}
                   onChange={(event) => setCommentPrivateNotes(event.target.checked)}
                   type="checkbox"
                 />
@@ -1474,6 +1540,7 @@ export function App() {
                 disabled={
                   savingComment ||
                   comment.trim().length === 0 &&
+                  commentAttachments.length === 0 &&
                   !selectedAssigneeId &&
                   !selectedCommentStatusId
                 }

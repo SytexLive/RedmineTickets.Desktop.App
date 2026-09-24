@@ -52,7 +52,7 @@ import {
 import type { Ticket } from "./domain/ticket";
 import { applyTicketRefresh, markTicketRead } from "./domain/ticketNotifications";
 import { summarizeOpenTicketsByAssignee } from "./domain/ticketUsers";
-import { createTranslator, formatError, type Language } from "./i18n";
+import { createTranslator, formatError, type Language, type TranslationKey } from "./i18n";
 import { playTicketNotificationSound } from "./notifications/sound";
 import { normalizeAccentColor } from "./theme";
 
@@ -75,6 +75,11 @@ type TicketContextMenu = {
 };
 
 type TicketContextSubmenu = "assignee" | "status";
+
+type ActionFeedback = {
+  kind: "success" | "error";
+  message: string;
+};
 
 const PINNED_PANEL_STORAGE_KEY = "redmineTicketsPanelPinned";
 const CONTEXT_MENU_MARGIN = 12;
@@ -207,6 +212,7 @@ export function App() {
   });
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [saving, setSaving] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
   const [installedUpdateVersion, setInstalledUpdateVersion] = useState<string | null>(null);
@@ -570,9 +576,33 @@ export function App() {
     };
   }, [clearUpdateStatusTimer]);
 
+  function formatUnknownError(err: unknown) {
+    return err instanceof Error ? err.message : String(err);
+  }
+
+  function showActionSuccess(messageKey: TranslationKey) {
+    setError(null);
+    setActionFeedback({
+      kind: "success",
+      message: createTranslator(settings?.language ?? "de")(messageKey)
+    });
+  }
+
+  function showActionFailure(messageKey: TranslationKey, err: unknown) {
+    const language = settings?.language ?? "de";
+    setActionFeedback({
+      kind: "error",
+      message: `${createTranslator(language)(messageKey)}: ${formatError(
+        formatUnknownError(err),
+        language
+      )}`
+    });
+  }
+
   async function handleSave(nextSettings: RedmineSettings) {
     setSaving(true);
     setError(null);
+    setActionFeedback(null);
     try {
       await saveSettings(nextSettings);
       setSettings(nextSettings);
@@ -649,11 +679,13 @@ export function App() {
 
     setTicketContextMenu(null);
     setTicketContextSubmenu(null);
+    setActionFeedback(null);
     try {
       await updateTicketStatus(settings, ticket.id, status.id);
       await refreshTickets(settings);
+      showActionSuccess("ticketStatusUpdatedSuccess");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      showActionFailure("ticketStatusUpdateFailed", err);
     }
   }
 
@@ -665,11 +697,13 @@ export function App() {
 
     setTicketContextMenu(null);
     setTicketContextSubmenu(null);
+    setActionFeedback(null);
     try {
       await assignTicket(settings, ticket.id, user.id);
       await refreshTickets(settings);
+      showActionSuccess("ticketAssignedSuccess");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      showActionFailure("ticketAssignFailed", err);
     }
   }
 
@@ -679,6 +713,7 @@ export function App() {
     }
 
     setSavingComment(true);
+    setActionFeedback(null);
     try {
       if (comment.trim().length > 0 || commentAttachments.length > 0) {
         await addTicketComment(
@@ -702,8 +737,9 @@ export function App() {
       setSelectedCommentStatusId("");
       setCommentTicket(null);
       await refreshTickets(settings);
+      showActionSuccess("ticketChangesSavedSuccess");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      showActionFailure("ticketChangesSaveFailed", err);
     } finally {
       setSavingComment(false);
     }
@@ -744,6 +780,7 @@ export function App() {
     };
 
     try {
+      setActionFeedback(null);
       await createTicket(settings, ticket);
       setShowCreateTicketDialog(false);
       setNewTicketSubject("");
@@ -758,8 +795,9 @@ export function App() {
       setNewTicketAttachments([]);
       setNewTicketAssignableUsers([]);
       await refreshTickets(settings);
+      showActionSuccess("ticketCreatedSuccess");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      showActionFailure("ticketCreateFailed", err);
     }
   }
 
@@ -797,6 +835,7 @@ export function App() {
 
     setShowCreateTicketDialog(true);
     setError(null);
+    setActionFeedback(null);
     setNewTicketAssignableUsers([]);
     setNewTicketProjectSearch("");
     setShowNewTicketProjectOptions(false);
@@ -1122,6 +1161,15 @@ export function App() {
 
           {updateMessage ? (
             <div className={`update-banner update-banner-${updateStatus}`}>{updateMessage}</div>
+          ) : null}
+
+          {actionFeedback ? (
+            <div
+              className={`action-feedback action-feedback-${actionFeedback.kind}`}
+              role={actionFeedback.kind === "error" ? "alert" : "status"}
+            >
+              {actionFeedback.message}
+            </div>
           ) : null}
 
           {visibleError ? <div className="error-banner">{visibleError}</div> : null}

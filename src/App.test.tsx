@@ -405,6 +405,7 @@ describe("App", () => {
         settings: expectedSettings,
         projectId: 12
       });
+      expect(screen.getByRole("status")).toHaveTextContent("Änderungen gespeichert");
     });
   });
 
@@ -1508,7 +1509,56 @@ describe("App", () => {
         projectId: 12
       });
       expect(screen.queryByRole("dialog", { name: "Ticket erstellen" })).toBeNull();
+      expect(screen.getByRole("status")).toHaveTextContent("Ticket erstellt");
     });
+  });
+
+  it("shows a failure message when ticket creation fails", async () => {
+    invokeMock.mockImplementation((command: string, args?: unknown) => {
+      if (command === "dock_window") return Promise.resolve();
+      if (command === "list_monitors") return Promise.resolve([]);
+      if (command === "load_ticket_state") {
+        return Promise.resolve({ knownTicketIds: [], unreadTicketIds: [] });
+      }
+      if (command === "save_ticket_state") return Promise.resolve();
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "fetch_tickets") {
+        return Promise.resolve([ticketFixture(42, "Existing ticket")]);
+      }
+      if (command === "fetch_projects") {
+        return Promise.resolve([{ id: 12, name: "Desktop App" }]);
+      }
+      if (command === "fetch_trackers") {
+        return Promise.resolve([{ id: 2, name: "Bug" }]);
+      }
+      if (command === "fetch_issue_priorities") return Promise.resolve([]);
+      if (command === "fetch_issue_statuses") return Promise.resolve([]);
+      if (command === "fetch_assignable_users") return Promise.resolve([]);
+      if (command === "create_ticket") {
+        return Promise.reject("Redmine returned HTTP 500");
+      }
+      return Promise.resolve(args);
+    });
+
+    render(<App />);
+
+    await screen.findByText("Existing ticket");
+    fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
+    const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
+    fireEvent.change(within(dialog).getByLabelText("Titel"), {
+      target: { value: "Fehler sichtbar machen" }
+    });
+    fireEvent.focus(within(dialog).getByLabelText("Projekt"));
+    fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
+    fireEvent.change(within(dialog).getByLabelText("Tracker"), {
+      target: { value: "2" }
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Ticket konnte nicht erstellt werden: Redmine-Fehler: Redmine returned HTTP 500"
+    );
+    expect(screen.getByRole("dialog", { name: "Ticket erstellen" })).toBeInTheDocument();
   });
 
   it("uses the Redmine status named Neu as the default create status", async () => {

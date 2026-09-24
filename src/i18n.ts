@@ -94,6 +94,14 @@ export type TranslationKey =
   | "ticketNotificationVolume"
   | "ticketNotificationSound"
   | "ticketTitle"
+  | "ticketAssignedSuccess"
+  | "ticketAssignFailed"
+  | "ticketChangesSavedSuccess"
+  | "ticketChangesSaveFailed"
+  | "ticketCreatedSuccess"
+  | "ticketCreateFailed"
+  | "ticketStatusUpdatedSuccess"
+  | "ticketStatusUpdateFailed"
   | "title"
   | "tracker"
   | "trackerId"
@@ -203,6 +211,14 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationVolume: "Ticketton Lautstärke",
     ticketNotificationSound: "Ticketton",
     ticketTitle: "Titel",
+    ticketAssignedSuccess: "Ticket zugewiesen",
+    ticketAssignFailed: "Ticket konnte nicht zugewiesen werden",
+    ticketChangesSavedSuccess: "Änderungen gespeichert",
+    ticketChangesSaveFailed: "Änderungen konnten nicht gespeichert werden",
+    ticketCreatedSuccess: "Ticket erstellt",
+    ticketCreateFailed: "Ticket konnte nicht erstellt werden",
+    ticketStatusUpdatedSuccess: "Status geändert",
+    ticketStatusUpdateFailed: "Status konnte nicht geändert werden",
     title: "Redmine Tickets",
     tracker: "Tracker",
     trackerId: "Tracker-ID",
@@ -311,6 +327,14 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     ticketNotificationVolume: "Ticket sound volume",
     ticketNotificationSound: "Ticket sound",
     ticketTitle: "Title",
+    ticketAssignedSuccess: "Ticket assigned",
+    ticketAssignFailed: "Could not assign ticket",
+    ticketChangesSavedSuccess: "Changes saved",
+    ticketChangesSaveFailed: "Could not save changes",
+    ticketCreatedSuccess: "Ticket created",
+    ticketCreateFailed: "Could not create ticket",
+    ticketStatusUpdatedSuccess: "Status changed",
+    ticketStatusUpdateFailed: "Could not change status",
     title: "Redmine Tickets",
     tracker: "Tracker",
     trackerId: "Tracker ID",

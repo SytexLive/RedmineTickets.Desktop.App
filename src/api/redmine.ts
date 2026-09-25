@@ -162,6 +162,10 @@ export function addTicketComment(
   return invoke("add_ticket_comment", { settings, ticketId, comment, privateNotes, attachments });
 }
 
+export function readAttachmentFiles(paths: string[]): Promise<NewTicketAttachment[]> {
+  return invoke("read_attachment_files", { paths });
+}
+
 export function assignTicket(
   settings: RedmineSettings,
   ticketId: number,

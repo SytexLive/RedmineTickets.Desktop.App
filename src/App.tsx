@@ -1,4 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
   addTicketComment,
   assignTicket,
@@ -24,6 +26,7 @@ import {
   type NewTicketAttachment,
   type NewTicket,
   openTicketUrl,
+  readAttachmentFiles,
   type RedmineProject,
   type RedmineSettings,
   type RedmineTracker,
@@ -570,6 +573,44 @@ export function App() {
   }, [showNewTicketProjectOptions]);
 
   useEffect(() => {
+    if (!isTauri() || (!commentTicket && !showCreateTicketDialog)) {
+      return;
+    }
+
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void getCurrentWebview()
+      .onDragDropEvent((event) => {
+        if (event.payload.type !== "drop" || event.payload.paths.length === 0) {
+          return;
+        }
+
+        if (commentTicket) {
+          void handleAddCommentFilePaths(event.payload.paths);
+        } else if (showCreateTicketDialog) {
+          void handleAddNewTicketFilePaths(event.payload.paths);
+        }
+      })
+      .then((nextUnlisten) => {
+        if (disposed) {
+          nextUnlisten();
+          return;
+        }
+        unlisten = nextUnlisten;
+      })
+      .catch((err) => {
+        if (!disposed) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [commentTicket, showCreateTicketDialog]);
+
+  useEffect(() => {
     return () => {
       if (collapseTimerRef.current !== null) {
         window.clearTimeout(collapseTimerRef.current);
@@ -887,6 +928,21 @@ export function App() {
     }
   }
 
+  async function handleAddCommentFilePaths(paths: string[]) {
+    setPendingCommentAttachmentReads((pendingReads) => pendingReads + 1);
+    try {
+      const attachments = await readAttachmentFiles(paths);
+      setCommentAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...attachments
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPendingCommentAttachmentReads((pendingReads) => Math.max(0, pendingReads - 1));
+    }
+  }
+
   function handleRemoveCommentAttachment(attachmentIndex: number) {
     setCommentAttachments((currentAttachments) =>
       currentAttachments.filter((_, index) => index !== attachmentIndex)
@@ -901,6 +957,21 @@ export function App() {
     setPendingNewTicketAttachmentReads((pendingReads) => pendingReads + 1);
     try {
       const attachments = await buildAttachments(files);
+      setNewTicketAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...attachments
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPendingNewTicketAttachmentReads((pendingReads) => Math.max(0, pendingReads - 1));
+    }
+  }
+
+  async function handleAddNewTicketFilePaths(paths: string[]) {
+    setPendingNewTicketAttachmentReads((pendingReads) => pendingReads + 1);
+    try {
+      const attachments = await readAttachmentFiles(paths);
       setNewTicketAttachments((currentAttachments) => [
         ...currentAttachments,
         ...attachments

@@ -4,6 +4,10 @@ import { App } from "./App";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const checkAndInstallUpdateMock = vi.hoisted(() => vi.fn());
+const nativeDragDropHandlers = vi.hoisted(
+  () => [] as Array<(event: { payload: { type: string; paths?: string[] } }) => void>
+);
+const onDragDropEventMock = vi.hoisted(() => vi.fn());
 const appVersionInfoLabel = `Was ist neu in Version ${__APP_VERSION__}`;
 const appVersionTitle = `Was ist neu in v${__APP_VERSION__}?`;
 
@@ -62,11 +66,17 @@ function deferred<T>() {
 function mockTicketApp({
   settings = settingsFixture(),
   ticketState = { knownTicketIds: [], unreadTicketIds: [] },
-  ticketBatches
+  ticketBatches,
+  droppedAttachments = []
 }: {
   settings?: ReturnType<typeof settingsFixture>;
   ticketState?: { knownTicketIds: number[]; unreadTicketIds: number[] };
   ticketBatches: ReturnType<typeof ticketFixture>[][];
+  droppedAttachments?: Array<{
+    filename: string;
+    contentType: string;
+    content: number[];
+  }>;
 }) {
   let fetchCount = 0;
   invokeMock.mockImplementation((command: string, args?: unknown) => {
@@ -79,6 +89,7 @@ function mockTicketApp({
     if (command === "fetch_projects") return Promise.resolve([]);
     if (command === "fetch_trackers") return Promise.resolve([]);
     if (command === "fetch_issue_priorities") return Promise.resolve([]);
+    if (command === "read_attachment_files") return Promise.resolve(droppedAttachments);
     if (command === "fetch_tickets") {
       const batch = ticketBatches[Math.min(fetchCount, ticketBatches.length - 1)];
       fetchCount += 1;
@@ -89,7 +100,14 @@ function mockTicketApp({
 }
 
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: invokeMock
+  invoke: invokeMock,
+  isTauri: () => true
+}));
+
+vi.mock("@tauri-apps/api/webview", () => ({
+  getCurrentWebview: () => ({
+    onDragDropEvent: onDragDropEventMock
+  })
 }));
 
 vi.mock("./appUpdates", () => ({
@@ -108,6 +126,13 @@ describe("App", () => {
 
   beforeEach(() => {
     checkAndInstallUpdateMock.mockResolvedValue({ status: "current" });
+    nativeDragDropHandlers.length = 0;
+    onDragDropEventMock.mockImplementation(
+      (handler: (event: { payload: { type: string; paths?: string[] } }) => void) => {
+        nativeDragDropHandlers.push(handler);
+        return Promise.resolve(() => undefined);
+      }
+    );
   });
 
   it("does not dock with default settings before saved settings are loaded", async () => {
@@ -500,6 +525,46 @@ describe("App", () => {
 
     expect(await within(dialog).findByText("debug.log")).toBeInTheDocument();
     expect(within(dialog).queryByText("Dateien werden hinzugefügt")).not.toBeInTheDocument();
+  });
+
+  it("adds PDF and DOCX files dropped through the native Tauri window", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Login reparieren")]],
+      droppedAttachments: [
+        {
+          filename: "report.pdf",
+          contentType: "application/pdf",
+          content: [1, 2, 3]
+        },
+        {
+          filename: "spec.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          content: [4, 5]
+        }
+      ]
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+    fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+    const dialog = screen.getByRole("dialog", { name: "Kommentar hinzufügen" });
+
+    await waitFor(() => {
+      expect(nativeDragDropHandlers).toHaveLength(1);
+    });
+    await act(async () => {
+      nativeDragDropHandlers[0]({
+        payload: {
+          type: "drop",
+          paths: ["C:\\Temp\\report.pdf", "C:\\Temp\\spec.docx"]
+        }
+      });
+    });
+
+    expect(await within(dialog).findByText("report.pdf")).toBeInTheDocument();
+    expect(within(dialog).getByText("spec.docx")).toBeInTheDocument();
   });
 
   it("puts add comment first in the ticket context menu and assigns from a submenu", async () => {

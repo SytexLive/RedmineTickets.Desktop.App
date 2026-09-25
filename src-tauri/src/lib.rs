@@ -1,3 +1,4 @@
+mod attachments;
 mod autostart;
 mod logging;
 mod redmine;
@@ -89,6 +90,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             ping,
+            attachments::read_attachment_files,
             redmine::add_ticket_comment,
             redmine::assign_ticket,
             redmine::create_ticket,

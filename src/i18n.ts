@@ -3,7 +3,9 @@ export type Language = "de" | "en";
 export type TranslationKey =
   | "addComment"
   | "apiKey"
+  | "attachmentChoose"
   | "attachmentRemove"
+  | "attachmentsAdding"
   | "assignTo"
   | "assignedToId"
   | "accentColor"
@@ -120,7 +122,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   de: {
     addComment: "Kommentar hinzuf\u00fcgen",
     apiKey: "API-Schl\u00fcssel",
+    attachmentChoose: "Dateien ausw\u00e4hlen",
     attachmentRemove: "Anhang {filename} entfernen",
+    attachmentsAdding: "Dateien werden hinzugef\u00fcgt ...",
     assignTo: "Zuweisen an",
     assignedToId: "Zuweisung-ID",
     accentColor: "Akzentfarbe",
@@ -139,7 +143,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     daysAgo: " T.",
     chooseOption: "Bitte wählen",
     description: "Beschreibung",
-    descriptionAttachmentHint: "Bilder hier hineinziehen oder einfügen",
+    descriptionAttachmentHint: "Dateien hier hineinziehen, einfügen oder auswählen",
     descriptionAttachments: "Anhänge",
     descriptionBold: "Fett",
     descriptionBulletedList: "Liste",
@@ -236,7 +240,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
     addComment: "Add comment",
     apiKey: "API key",
+    attachmentChoose: "Choose files",
     attachmentRemove: "Remove attachment {filename}",
+    attachmentsAdding: "Adding files ...",
     assignTo: "Assign to",
     assignedToId: "Assignee ID",
     accentColor: "Accent color",
@@ -255,7 +261,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     daysAgo: "d",
     chooseOption: "Choose",
     description: "Description",
-    descriptionAttachmentHint: "Drop or paste images here",
+    descriptionAttachmentHint: "Drop, paste, or choose files here",
     descriptionAttachments: "Attachments",
     descriptionBold: "Bold",
     descriptionBulletedList: "List",

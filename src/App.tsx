@@ -233,6 +233,7 @@ export function App() {
   const [comment, setComment] = useState("");
   const [commentPrivateNotes, setCommentPrivateNotes] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<NewTicketAttachment[]>([]);
+  const [pendingCommentAttachmentReads, setPendingCommentAttachmentReads] = useState(0);
   const [savingComment, setSavingComment] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [selectedCommentStatusId, setSelectedCommentStatusId] = useState("");
@@ -248,6 +249,7 @@ export function App() {
   const [newTicketAssignedToId, setNewTicketAssignedToId] = useState("");
   const [newTicketDescription, setNewTicketDescription] = useState("");
   const [newTicketAttachments, setNewTicketAttachments] = useState<NewTicketAttachment[]>([]);
+  const [pendingNewTicketAttachmentReads, setPendingNewTicketAttachmentReads] = useState(0);
   const [quickTicketNumber, setQuickTicketNumber] = useState("");
   const ticketContextMenuRef = useRef<HTMLDivElement | null>(null);
   const newTicketProjectFieldRef = useRef<HTMLLabelElement | null>(null);
@@ -708,7 +710,7 @@ export function App() {
   }
 
   async function handleSubmitComment() {
-    if (!settings || !commentTicket || savingComment) {
+    if (!settings || !commentTicket || savingComment || pendingCommentAttachmentReads > 0) {
       return;
     }
 
@@ -764,6 +766,9 @@ export function App() {
   async function handleCreateTicket() {
     if (!settings) {
       setViewState("settings");
+      return;
+    }
+    if (pendingNewTicketAttachmentReads > 0) {
       return;
     }
 
@@ -864,15 +869,22 @@ export function App() {
   }
 
   async function handleAddCommentFiles(files: FileList | File[]) {
-    const attachments = await buildAttachments(files);
-    if (attachments.length === 0) {
+    if (files.length === 0) {
       return;
     }
 
-    setCommentAttachments((currentAttachments) => [
-      ...currentAttachments,
-      ...attachments
-    ]);
+    setPendingCommentAttachmentReads((pendingReads) => pendingReads + 1);
+    try {
+      const attachments = await buildAttachments(files);
+      setCommentAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...attachments
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPendingCommentAttachmentReads((pendingReads) => Math.max(0, pendingReads - 1));
+    }
   }
 
   function handleRemoveCommentAttachment(attachmentIndex: number) {
@@ -882,15 +894,22 @@ export function App() {
   }
 
   async function handleAddNewTicketFiles(files: FileList | File[]) {
-    const attachments = await buildAttachments(files);
-    if (attachments.length === 0) {
+    if (files.length === 0) {
       return;
     }
 
-    setNewTicketAttachments((currentAttachments) => [
-      ...currentAttachments,
-      ...attachments
-    ]);
+    setPendingNewTicketAttachmentReads((pendingReads) => pendingReads + 1);
+    try {
+      const attachments = await buildAttachments(files);
+      setNewTicketAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...attachments
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPendingNewTicketAttachmentReads((pendingReads) => Math.max(0, pendingReads - 1));
+    }
   }
 
   function handleRemoveNewTicketAttachment(attachmentIndex: number) {
@@ -1036,7 +1055,8 @@ export function App() {
   const canCreateTicket =
     newTicketSubject.trim().length > 0 &&
     newTicketProjectId.length > 0 &&
-    newTicketTrackerId.length > 0;
+    newTicketTrackerId.length > 0 &&
+    pendingNewTicketAttachmentReads === 0;
   const normalizedProjectFilter = newTicketProjectSearch.trim().toLowerCase();
   const filteredProjects =
     normalizedProjectFilter.length === 0
@@ -1518,9 +1538,33 @@ export function App() {
                 placeholder={t("comment")}
                 value={comment}
               />
-              {commentAttachments.length > 0 ? (
-                <div className="create-ticket-attachments">
-                  <span>{t("descriptionAttachments")}</span>
+              <div className="create-ticket-attachments">
+                <span>{t("descriptionAttachments")}</span>
+                <div className="attachment-picker-row">
+                  <label className="attachment-picker-button">
+                    <input
+                      aria-label={t("attachmentChoose")}
+                      className="attachment-picker-input"
+                      disabled={savingComment}
+                      multiple
+                      type="file"
+                      onChange={(event) => {
+                        if (event.currentTarget.files) {
+                          void handleAddCommentFiles(event.currentTarget.files);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <span>{t("attachmentChoose")}</span>
+                  </label>
+                  <small>{t("descriptionAttachmentHint")}</small>
+                </div>
+                {pendingCommentAttachmentReads > 0 ? (
+                  <span className="attachment-picker-status" role="status">
+                    {t("attachmentsAdding")}
+                  </span>
+                ) : null}
+                {commentAttachments.length > 0 ? (
                   <ul>
                     {commentAttachments.map((attachment, index) => (
                       <li key={`${attachment.filename}-${index}`}>
@@ -1536,8 +1580,8 @@ export function App() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
               <label className="comment-dialog-checkbox">
                 <input
                   checked={commentPrivateNotes}
@@ -1587,6 +1631,7 @@ export function App() {
                 className="primary-action"
                 disabled={
                   savingComment ||
+                  pendingCommentAttachmentReads > 0 ||
                   comment.trim().length === 0 &&
                   commentAttachments.length === 0 &&
                   !selectedAssigneeId &&
@@ -1788,9 +1833,32 @@ export function App() {
                   value={newTicketDescription}
                 />
               </div>
-              {newTicketAttachments.length > 0 ? (
-                <div className="create-ticket-attachments">
-                  <span>{t("descriptionAttachments")}</span>
+              <div className="create-ticket-attachments">
+                <span>{t("descriptionAttachments")}</span>
+                <div className="attachment-picker-row">
+                  <label className="attachment-picker-button">
+                    <input
+                      aria-label={t("attachmentChoose")}
+                      className="attachment-picker-input"
+                      multiple
+                      type="file"
+                      onChange={(event) => {
+                        if (event.currentTarget.files) {
+                          void handleAddNewTicketFiles(event.currentTarget.files);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <span>{t("attachmentChoose")}</span>
+                  </label>
+                  <small>{t("descriptionAttachmentHint")}</small>
+                </div>
+                {pendingNewTicketAttachmentReads > 0 ? (
+                  <span className="attachment-picker-status" role="status">
+                    {t("attachmentsAdding")}
+                  </span>
+                ) : null}
+                {newTicketAttachments.length > 0 ? (
                   <ul>
                     {newTicketAttachments.map((attachment, index) => (
                       <li key={`${attachment.filename}-${index}`}>
@@ -1805,8 +1873,8 @@ export function App() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
               <button
                 className="primary-action"
                 disabled={!canCreateTicket}

@@ -462,6 +462,46 @@ describe("App", () => {
     });
   });
 
+  it("shows visible feedback while a selected attachment is being added", async () => {
+    mockTicketApp({
+      ticketBatches: [[ticketFixture(42, "Login reparieren")]]
+    });
+
+    render(<App />);
+
+    const ticket = await screen.findByText("Login reparieren");
+    fireEvent.contextMenu(ticket, { clientX: 20, clientY: 20 });
+    fireEvent.click(await screen.findByRole("button", { name: "Kommentar hinzufügen" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Kommentar hinzufügen" });
+    let finishReadingFile!: (content: ArrayBuffer) => void;
+    const fileContent = new Promise<ArrayBuffer>((resolve) => {
+      finishReadingFile = resolve;
+    });
+    const file = new File([new Uint8Array([1, 2, 3])], "debug.log", {
+      type: "text/plain"
+    });
+    Object.defineProperty(file, "arrayBuffer", {
+      value: vi.fn(() => fileContent)
+    });
+
+    fireEvent.change(within(dialog).getByLabelText("Dateien auswählen"), {
+      target: { files: [file] }
+    });
+
+    expect(within(dialog).getByRole("status")).toHaveTextContent(
+      "Dateien werden hinzugefügt"
+    );
+    expect(within(dialog).getByRole("button", { name: "Änderungen speichern" })).toBeDisabled();
+
+    await act(async () => {
+      finishReadingFile(new Uint8Array([1, 2, 3]).buffer);
+    });
+
+    expect(await within(dialog).findByText("debug.log")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Dateien werden hinzugefügt")).not.toBeInTheDocument();
+  });
+
   it("puts add comment first in the ticket context menu and assigns from a submenu", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "dock_window") {
@@ -1707,6 +1747,7 @@ describe("App", () => {
     fireEvent.change(within(dialog).getByLabelText("Tracker"), {
       target: { value: "2" }
     });
+    expect(within(dialog).getByLabelText("Dateien auswählen")).toBeInTheDocument();
 
     const description = within(dialog).getByLabelText("Beschreibung");
     const droppedFile = new File([new Uint8Array([1, 2, 3])], "debug.log", {

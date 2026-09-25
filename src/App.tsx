@@ -848,14 +848,14 @@ export function App() {
     void refreshTicketCreateOptions(settings);
   }
 
-  async function buildImageAttachments(files: FileList | File[]) {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    if (imageFiles.length === 0) {
+  async function buildAttachments(files: FileList | File[]) {
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length === 0) {
       return [];
     }
 
     return Promise.all(
-      imageFiles.map(async (file): Promise<NewTicketAttachment> => ({
+      selectedFiles.map(async (file): Promise<NewTicketAttachment> => ({
         filename: file.name,
         contentType: file.type || "application/octet-stream",
         content: Array.from(new Uint8Array(await file.arrayBuffer()))
@@ -864,7 +864,7 @@ export function App() {
   }
 
   async function handleAddCommentFiles(files: FileList | File[]) {
-    const attachments = await buildImageAttachments(files);
+    const attachments = await buildAttachments(files);
     if (attachments.length === 0) {
       return;
     }
@@ -882,7 +882,7 @@ export function App() {
   }
 
   async function handleAddNewTicketFiles(files: FileList | File[]) {
-    const attachments = await buildImageAttachments(files);
+    const attachments = await buildAttachments(files);
     if (attachments.length === 0) {
       return;
     }

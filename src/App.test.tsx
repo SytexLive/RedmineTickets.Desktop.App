@@ -409,7 +409,7 @@ describe("App", () => {
     });
   });
 
-  it("adds and removes image attachments from the comment dialog", async () => {
+  it("adds and removes arbitrary file attachments from the comment dialog", async () => {
     mockTicketApp({
       ticketBatches: [[ticketFixture(42, "Login reparieren")]]
     });
@@ -426,11 +426,11 @@ describe("App", () => {
       target: { value: "Screenshots anbei." }
     });
 
-    const firstFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
-      type: "image/png"
+    const firstFile = new File([new Uint8Array([1, 2, 3])], "debug.log", {
+      type: "text/plain"
     });
-    const secondFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
-      type: "image/jpeg"
+    const secondFile = new File([new Uint8Array([4, 5])], "report.pdf", {
+      type: "application/pdf"
     });
 
     fireEvent.drop(commentInput, {
@@ -439,10 +439,10 @@ describe("App", () => {
       }
     });
 
-    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
-    expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
+    expect(await within(dialog).findByText("debug.log")).toBeInTheDocument();
+    expect(await within(dialog).findByText("report.pdf")).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang drop.png entfernen" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang debug.log entfernen" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Änderungen speichern" }));
 
     await waitFor(() => {
@@ -453,8 +453,8 @@ describe("App", () => {
         privateNotes: false,
         attachments: [
           {
-            filename: "paste.jpg",
-            contentType: "image/jpeg",
+            filename: "report.pdf",
+            contentType: "application/pdf",
             content: [4, 5]
           }
         ]
@@ -1671,7 +1671,7 @@ describe("App", () => {
     });
   });
 
-  it("adds dropped and pasted image files to a newly created ticket", async () => {
+  it("adds dropped and pasted arbitrary files to a newly created ticket", async () => {
     invokeMock.mockImplementation((command: string, args?: unknown) => {
       if (command === "dock_window") return Promise.resolve();
       if (command === "list_monitors") return Promise.resolve([]);
@@ -1700,7 +1700,7 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
     const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
     fireEvent.change(within(dialog).getByLabelText("Titel"), {
-      target: { value: "Bilder anhängen" }
+      target: { value: "Dateien anhängen" }
     });
     fireEvent.focus(within(dialog).getByLabelText("Projekt"));
     fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
@@ -1709,11 +1709,11 @@ describe("App", () => {
     });
 
     const description = within(dialog).getByLabelText("Beschreibung");
-    const droppedFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
-      type: "image/png"
+    const droppedFile = new File([new Uint8Array([1, 2, 3])], "debug.log", {
+      type: "text/plain"
     });
-    const pastedFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
-      type: "image/jpeg"
+    const pastedFile = new File([new Uint8Array([4, 5])], "report.pdf", {
+      type: "application/pdf"
     });
 
     fireEvent.drop(description, {
@@ -1728,8 +1728,8 @@ describe("App", () => {
       }
     });
 
-    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
-    expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
+    expect(await within(dialog).findByText("debug.log")).toBeInTheDocument();
+    expect(await within(dialog).findByText("report.pdf")).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
 
@@ -1739,13 +1739,13 @@ describe("App", () => {
         ticket: expect.objectContaining({
           attachments: [
             {
-              filename: "drop.png",
-              contentType: "image/png",
+              filename: "debug.log",
+              contentType: "text/plain",
               content: [1, 2, 3]
             },
             {
-              filename: "paste.jpg",
-              contentType: "image/jpeg",
+              filename: "report.pdf",
+              contentType: "application/pdf",
               content: [4, 5]
             }
           ]
@@ -1783,7 +1783,7 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ticket erstellen" }));
     const dialog = screen.getByRole("dialog", { name: "Ticket erstellen" });
     fireEvent.change(within(dialog).getByLabelText("Titel"), {
-      target: { value: "Bilder anhängen" }
+      target: { value: "Dateien anhängen" }
     });
     fireEvent.focus(within(dialog).getByLabelText("Projekt"));
     fireEvent.click(await within(dialog).findByRole("option", { name: "Desktop App" }));
@@ -1792,9 +1792,7 @@ describe("App", () => {
     });
 
     const description = within(dialog).getByLabelText("Beschreibung");
-    const firstFile = new File([new Uint8Array([1, 2, 3])], "drop.png", {
-      type: "image/png"
-    });
+    const firstFile = new File([new Uint8Array([1, 2, 3])], "archive.bin");
     const secondFile = new File([new Uint8Array([4, 5])], "paste.jpg", {
       type: "image/jpeg"
     });
@@ -1805,10 +1803,10 @@ describe("App", () => {
       }
     });
 
-    expect(await within(dialog).findByText("drop.png")).toBeInTheDocument();
+    expect(await within(dialog).findByText("archive.bin")).toBeInTheDocument();
     expect(await within(dialog).findByText("paste.jpg")).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang drop.png entfernen" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Anhang archive.bin entfernen" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Ticket erstellen" }));
 
     await waitFor(() => {

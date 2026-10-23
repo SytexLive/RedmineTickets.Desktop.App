@@ -38,6 +38,7 @@ import {
 } from "./api/redmine";
 import { checkAndInstallUpdate } from "./appUpdates";
 import { SettingsForm } from "./components/SettingsForm";
+import { ProjectTickets } from "./components/ProjectTickets";
 import { TicketList } from "./components/TicketList";
 import {
   ChevronDownIcon,
@@ -60,7 +61,7 @@ import { playTicketNotificationSound } from "./notifications/sound";
 import { normalizeAccentColor } from "./theme";
 
 type ViewState = "loading" | "settings" | "tickets";
-type TicketTab = "my-open" | "watched" | "created" | "users";
+type TicketTab = "my-open" | "watched" | "created" | "users" | "projects";
 type UpdateStatus = "idle" | "checking" | "current" | "installed" | "error";
 
 type TicketTabCacheEntry = {
@@ -92,7 +93,7 @@ function parseQuickTicketNumber(value: string): number {
 }
 const CONTEXT_MENU_WIDTH = 240;
 const UPDATE_SUCCESS_VISIBLE_MS = 4000;
-const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users"];
+const TICKET_TABS: TicketTab[] = ["my-open", "watched", "created", "users", "projects"];
 const RELEASE_NOTE_KEYS = [
   "releaseNoteSearchFilter",
   "releaseNoteCompactCards",
@@ -160,7 +161,7 @@ function fetchTicketsForTab(settings: RedmineSettings, tab: TicketTab) {
     return fetchCreatedOpenTickets(settings);
   }
 
-  if (tab === "users") {
+  if (tab === "users" || tab === "projects") {
     return fetchOpenTickets(settings);
   }
 
@@ -172,6 +173,7 @@ function createEmptyTicketTabCache(): TicketTabCache {
     "my-open": { tickets: [], loadedAt: null },
     watched: { tickets: [], loadedAt: null },
     created: { tickets: [], loadedAt: null },
+    projects: { tickets: [], loadedAt: null },
     users: { tickets: [], loadedAt: null }
   };
 }
@@ -181,6 +183,7 @@ function createEmptyTicketTabLoadingState(): TicketTabLoadingState {
     "my-open": false,
     watched: false,
     created: false,
+    projects: false,
     users: false
   };
 }
@@ -190,6 +193,7 @@ function createEmptyTicketTabLoadingCounts(): Record<TicketTab, number> {
     "my-open": 0,
     watched: 0,
     created: 0,
+    projects: 0,
     users: 0
   };
 }
@@ -1139,6 +1143,7 @@ export function App() {
     "my-open": ticketTabCache["my-open"].tickets.length,
     watched: ticketTabCache.watched.tickets.length,
     created: ticketTabCache.created.tickets.length,
+    projects: ticketTabCache.projects.tickets.length,
     users: ticketTabCache.users.tickets.length
   } satisfies Record<TicketTab, number>;
 
@@ -1314,13 +1319,13 @@ export function App() {
             </div>
           ) : null}
 
-          {viewState === "tickets" && tickets.length === 0 && !activeTicketTabLoading ? (
+          {viewState === "tickets" && tickets.length === 0 && activeTicketTab !== "projects" && !activeTicketTabLoading ? (
             <div className="status-panel">
               {activeTicketTab === "users" ? t("noOpenUsers") : t("noOpenTickets")}
             </div>
           ) : null}
 
-          {viewState === "tickets" && tickets.length > 0 && activeTicketTab !== "users" ? (
+          {viewState === "tickets" && tickets.length > 0 && activeTicketTab !== "users" && activeTicketTab !== "projects" ? (
             <TicketList
               onOpenTicket={handleOpenTicket}
               onTicketContextMenu={handleOpenTicketContextMenu}
@@ -1342,11 +1347,28 @@ export function App() {
                 priorityDesc: t("sortPriorityDesc"),
                 projectAsc: t("sortProjectAsc"),
                 idDesc: t("sortIdDesc"),
-                idAsc: t("sortIdAsc")
+                idAsc: t("sortIdAsc"),
+                assigneeAsc: language === "de" ? "Zugewiesen an A–Z" : "Assignee A–Z",
+                statusAsc: "Status A–Z"
               }}
               onMarkAllRead={markAllTicketsAsRead}
               tickets={tickets}
               unreadTicketIds={ticketState.unreadTicketIds}
+            />
+          ) : null}
+
+          {viewState === "tickets" && activeTicketTab === "projects" && settings ? (
+            <ProjectTickets
+              tickets={tickets}
+              projects={projects}
+              myTicketIds={ticketTabCache["my-open"].tickets.map(ticket => ticket.id)}
+              language={language}
+              onOpenTicket={handleOpenTicket}
+              onTicketContextMenu={handleOpenTicketContextMenu}
+              onOpenWiki={projectId => {
+                void openTicketUrl(`${settings.baseUrl.replace(/\/+$/, "")}/projects/${projectId}/wiki`)
+                  .catch(err => setError(err instanceof Error ? err.message : String(err)));
+              }}
             />
           ) : null}
 
@@ -1401,6 +1423,12 @@ export function App() {
                   label: t("createdTicketsTab"),
                   shortLabel: language === "de" ? "Erstellt" : "Created",
                   icon: "edit"
+                },
+                {
+                  id: "projects" as const,
+                  label: language === "de" ? "Projekte" : "Projects",
+                  shortLabel: language === "de" ? "Projekte" : "Projects",
+                  icon: "inbox"
                 },
                 {
                   id: "users" as const,

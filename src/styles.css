@@ -818,7 +818,7 @@ textarea {
 
 .bottom-ticket-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   flex: 0 0 auto;
   gap: 4px;
   border-top: 1px solid #d9dee7;
@@ -1402,3 +1402,30 @@ textarea {
   border-right: 0;
   border-left: 0;
 }
+
+.project-tickets {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.project-controls { flex: 0 0 auto; }
+.project-quick-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.project-quick-filters button[aria-pressed="true"] { color: var(--accent-color); border-color: var(--accent-color); }
+.project-result-count { padding: 4px 12px; font-size: 12px; color: #697282; }
+
+.project-controls .project-quick-filters { grid-column: 1 / -1; }
+.project-controls button {
+  min-height: 32px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #fff;
+  color: #4d5868;
+  padding: 5px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.project-controls button:disabled { opacity: .5; cursor: default; }
+.project-controls button:focus-visible { outline: 2px solid var(--accent-color-focus); }

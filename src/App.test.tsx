@@ -115,6 +115,25 @@ vi.mock("./appUpdates", () => ({
 }));
 
 describe("App", () => {
+  it("opens a project wiki from the projects tab even without open tickets", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "load_settings") return Promise.resolve(settingsFixture());
+      if (command === "load_ticket_state") return Promise.resolve({knownTicketIds: [], unreadTicketIds: []});
+      if (command === "fetch_projects") return Promise.resolve([{id: 12, name: "Desktop"}]);
+      if (command.startsWith("fetch_") || command === "list_monitors") return Promise.resolve([]);
+      return Promise.resolve();
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", {name: "Projekte"}));
+    await screen.findByRole("option", {name: "Desktop (#12)"});
+    fireEvent.change(screen.getByLabelText("Projekt"), {target: {value: "12"}});
+    fireEvent.click(screen.getByRole("button", {name: /Wiki/}));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("open_ticket_url", {
+      url: `${settingsFixture().baseUrl.replace(/\/+$/, "")}/projects/12/wiki`
+    }));
+    expect(screen.getByText("0 offene Tickets")).toBeInTheDocument();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();

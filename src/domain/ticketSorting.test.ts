@@ -77,3 +77,13 @@ describe("sortTickets", () => {
     expect(sortTickets(tickets, option).map((sortedTicket) => sortedTicket.id)).toEqual([9, 4]);
   });
 });
+
+
+describe("project sorting", () => {
+  it("sorts by assignee and status without mutating the source", () => {
+    const items = [ticket({id: 1, assignee: "Zoe", status: "New"}), ticket({id: 2, assignee: "Anna", status: "Assigned"}), ticket({id: 3})];
+    expect(sortTickets(items, "assignee-asc").map(t => t.id)).toEqual([3, 2, 1]);
+    expect(sortTickets(items, "status-asc").map(t => t.id)).toEqual([2, 3, 1]);
+    expect(items.map(t => t.id)).toEqual([1, 2, 3]);
+  });
+});

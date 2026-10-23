@@ -4,6 +4,8 @@ import { sortTickets, type TicketSortOption } from "../domain/ticketSorting";
 
 type TicketListProps = {
   tickets: Ticket[];
+  hideProjectFilter?: boolean;
+  resultCountLabel?: string;
   unreadTicketIds?: number[];
   sortLabels?: Partial<TicketSortLabels>;
   onMarkAllRead?: () => void;
@@ -30,6 +32,8 @@ export type TicketSortLabels = {
   projectAsc: string;
   idDesc: string;
   idAsc: string;
+  assigneeAsc: string;
+  statusAsc: string;
 };
 
 const defaultSortLabels: TicketSortLabels = {
@@ -50,6 +54,8 @@ const defaultSortLabels: TicketSortLabels = {
   priorityDesc: "Priority highest",
   projectAsc: "Customer A-Z",
   idDesc: "Ticket number descending",
+  assigneeAsc: "Assignee A-Z",
+  statusAsc: "Status A-Z",
   idAsc: "Ticket number ascending"
 };
 
@@ -80,7 +86,7 @@ function priorityClassName(priority: string) {
 }
 
 function ticketMatchesSearch(ticket: Ticket, searchQuery: string) {
-  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const normalizedSearch = searchQuery.trim().replace(/^#(?=\d)/, "").toLowerCase();
   if (!normalizedSearch) {
     return true;
   }
@@ -126,6 +132,8 @@ function formatRelativeTicketTime(value: string | undefined, labels: TicketSortL
 
 export function TicketList({
   tickets,
+  hideProjectFilter = false,
+  resultCountLabel,
   unreadTicketIds,
   sortLabels,
   onMarkAllRead,
@@ -168,7 +176,7 @@ export function TicketList({
               value={searchQuery}
             />
           </label>
-          <label className="ticket-list-checkbox">
+          {!hideProjectFilter || unreadTicketIds ? <label className="ticket-list-checkbox">
             <input
               aria-label={labels.onlyNew}
               checked={showUnreadOnly}
@@ -176,9 +184,9 @@ export function TicketList({
               type="checkbox"
             />
             <span>{labels.onlyNew}</span>
-          </label>
+          </label> : null}
         </div>
-        <label>
+        {!hideProjectFilter ? <label>
           <span>{labels.customer}</span>
           <select
             aria-label={labels.customer}
@@ -192,7 +200,7 @@ export function TicketList({
               </option>
             ))}
           </select>
-        </label>
+        </label> : null}
         <label>
           <span>{labels.sortBy}</span>
           <select
@@ -205,6 +213,8 @@ export function TicketList({
             <option value="priority-desc">{labels.priorityDesc}</option>
             <option value="project-asc">{labels.projectAsc}</option>
             <option value="id-desc">{labels.idDesc}</option>
+            <option value="assignee-asc">{labels.assigneeAsc}</option>
+            <option value="status-asc">{labels.statusAsc}</option>
             <option value="id-asc">{labels.idAsc}</option>
           </select>
         </label>
@@ -214,6 +224,7 @@ export function TicketList({
           </button>
         ) : null}
       </div>
+      {resultCountLabel ? <div className="project-result-count" role="status">{sortedTickets.length} {resultCountLabel}</div> : null}
       <div className="ticket-list">
         {sortedTickets.length === 0 ? (
           <div className="ticket-list-empty">{labels.noTicketsForCustomer}</div>
@@ -247,6 +258,7 @@ export function TicketList({
               <span className="ticket-row-bottom">
                 <span>{ticket.tracker}</span>
                 <span>{ticket.status}</span>
+                {ticket.assignee ? <span>{ticket.assignee}</span> : null}
                 {updatedLabel ? (
                   <span className="ticket-row-updated-time">
                     {updatedLabel}

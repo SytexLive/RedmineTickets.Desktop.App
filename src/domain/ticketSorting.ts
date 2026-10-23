@@ -1,6 +1,8 @@
 import type { Ticket } from "./ticket";
 
 export type TicketSortOption =
+  | "assignee-asc"
+  | "status-asc"
   | "updated-desc"
   | "created-desc"
   | "priority-desc"
@@ -45,6 +47,11 @@ function compareByProjectAsc(left: Ticket, right: Ticket): number {
 
 export function sortTickets(tickets: Ticket[], sortOption: TicketSortOption): Ticket[] {
   return [...tickets].sort((left, right) => {
+    if (sortOption === "assignee-asc" || sortOption === "status-asc") {
+      const leftValue = sortOption === "assignee-asc" ? left.assignee ?? "" : left.status;
+      const rightValue = sortOption === "assignee-asc" ? right.assignee ?? "" : right.status;
+      return leftValue.localeCompare(rightValue, undefined, { sensitivity: "base" }) || compareByIdDesc(left, right);
+    }
     if (sortOption === "updated-desc") {
       return dateValue(right.updatedAt) - dateValue(left.updatedAt) || compareByIdDesc(left, right);
     }

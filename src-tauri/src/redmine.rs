@@ -347,6 +347,32 @@ fn map_redmine_response_status(status: reqwest::StatusCode) -> Result<(), String
     Ok(())
 }
 
+fn redmine_assignment_result(status: reqwest::StatusCode, body: &str) -> Result<(), String> {
+    let error = match map_redmine_response_status(status) {
+        Ok(()) => return Ok(()),
+        Err(error) => error,
+    };
+    if status != reqwest::StatusCode::UNPROCESSABLE_ENTITY {
+        return Err(error);
+    }
+
+    #[derive(Deserialize)]
+    struct ValidationErrors {
+        errors: Vec<String>,
+    }
+
+    let details = serde_json::from_str::<ValidationErrors>(body)
+        .map(|response| response.errors.into_iter()
+            .filter(|message| !message.trim().is_empty())
+            .collect::<Vec<_>>().join("; "))
+        .unwrap_or_default();
+    if details.is_empty() {
+        Err(error)
+    } else {
+        Err(format!("{error}: {details}"))
+    }
+}
+
 async fn upload_attachments(
     settings: &RedmineSettings,
     client: &reqwest::Client,
@@ -665,7 +691,12 @@ pub async fn assign_ticket(
         .await
         .map_err(|_| "Network failure while updating Redmine ticket".to_string())?;
 
-    map_redmine_response_status(response.status())
+    let status = response.status();
+    if status != reqwest::StatusCode::UNPROCESSABLE_ENTITY {
+        return map_redmine_response_status(status);
+    }
+    let body = response.text().await.unwrap_or_default();
+    redmine_assignment_result(status, &body)
 }
 
 #[tauri::command]
@@ -706,6 +737,30 @@ pub async fn add_ticket_comment(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assignment_error_includes_redmine_validation_details() {
+        let error = redmine_assignment_result(
+            reqwest::StatusCode::UNPROCESSABLE_ENTITY,
+            r#"{"errors":["Zugewiesen an ist ungültig","Pflichtfeld muss ausgefüllt werden"]}"#,
+        ).unwrap_err();
+        assert_eq!(error, "Redmine returned HTTP 422 Unprocessable Entity: Zugewiesen an ist ungültig; Pflichtfeld muss ausgefüllt werden");
+    }
+
+    #[test]
+    fn assignment_error_falls_back_for_non_validation_responses() {
+        for body in ["<html>proxy error</html>", "", r#"{"errors":[]}"#, r#"{"errors":"invalid"}"#] {
+            assert_eq!(
+                redmine_assignment_result(reqwest::StatusCode::UNPROCESSABLE_ENTITY, body),
+                Err("Redmine returned HTTP 422 Unprocessable Entity".to_string())
+            );
+        }
+        assert_eq!(redmine_assignment_result(reqwest::StatusCode::NO_CONTENT, ""), Ok(()));
+        assert_eq!(
+            redmine_assignment_result(reqwest::StatusCode::FORBIDDEN, r#"{"errors":["private detail"]}"#),
+            Err("Redmine authentication failed".to_string())
+        );
+    }
 
     #[test]
     fn normalizes_redmine_issue_into_ticket() {
